@@ -6,6 +6,35 @@
 #include <trc/RasterSceneBase.h>
 using namespace trc;
 
+/**
+ * Count the number of elements in a range. Usable with generators.
+ */
+auto size(std::ranges::range auto&& r)
+{
+    size_t n{ 0 };
+    for (auto&& _ : r) ++n;
+    return n;
+}
+
+/**
+ * Call all draw functions in a scene for a specific set of render stage,
+ * subpass, and pipeline.
+ *
+ * Passes `nullptr` as `DrawEnvironment::currentPipeline`!
+ */
+void invokeDrawFunctions(RasterSceneBase& scene,
+                         RenderStage::ID stage,
+                         SubPass::ID subpass,
+                         Pipeline::ID pipeline)
+{
+    const DrawEnvironment env{ .currentPipeline=nullptr };
+    for (const DrawableFunction& func : scene.iterDrawFunctions(stage, subpass, pipeline)) {
+        func(env, vk::CommandBuffer{});
+    }
+}
+
+
+
 TEST(RasterSceneBaseTest, ConstructDestruct)
 {
     RasterSceneBase scene;
@@ -40,27 +69,25 @@ TEST(RasterSceneBaseTest, DrawFunctionExecution)
         }
     }
 
-    ASSERT_EQ(scene.iterPipelines(s[0], u[0]).size(), 5);
-    ASSERT_EQ(scene.iterPipelines(s[0], u[1]).size(), 5);
-    ASSERT_EQ(scene.iterPipelines(s[0], u[2]).size(), 5);
-    ASSERT_EQ(scene.iterPipelines(s[1], u[0]).size(), 5);
-    ASSERT_EQ(scene.iterPipelines(s[1], u[1]).size(), 5);
-    ASSERT_EQ(scene.iterPipelines(s[1], u[2]).size(), 5);
-    ASSERT_EQ(scene.iterPipelines(s[2], u[0]).size(), 5);
-    ASSERT_EQ(scene.iterPipelines(s[2], u[1]).size(), 5);
-    ASSERT_EQ(scene.iterPipelines(s[2], u[2]).size(), 5);
+    ASSERT_EQ(size(scene.iterPipelines(s[0], u[0])), 5);
+    ASSERT_EQ(size(scene.iterPipelines(s[0], u[1])), 5);
+    ASSERT_EQ(size(scene.iterPipelines(s[0], u[2])), 5);
+    ASSERT_EQ(size(scene.iterPipelines(s[1], u[0])), 5);
+    ASSERT_EQ(size(scene.iterPipelines(s[1], u[1])), 5);
+    ASSERT_EQ(size(scene.iterPipelines(s[1], u[2])), 5);
+    ASSERT_EQ(size(scene.iterPipelines(s[2], u[0])), 5);
+    ASSERT_EQ(size(scene.iterPipelines(s[2], u[1])), 5);
+    ASSERT_EQ(size(scene.iterPipelines(s[2], u[2])), 5);
 
-    scene.invokeDrawFunctions(s[1], *(RenderPass*)nullptr, u[0], p[3], *(Pipeline*)nullptr, {});
+    invokeDrawFunctions(scene, s[1], u[0], p[3]);
     ASSERT_EQ(numExecuted, (3 * 3 * 1000) / 5);
 
     numExecuted = 0;
-    scene.invokeDrawFunctions(s[0], *(RenderPass*)nullptr, u[2], p[1], *(Pipeline*)nullptr, {});
+    invokeDrawFunctions(scene, s[0], u[2], p[1]);
     ASSERT_EQ(numExecuted, (3 * 3 * 1000) / 5);
 
     ASSERT_THROW(
-        scene.invokeDrawFunctions(
-            RenderStage::ID(200), *(RenderPass*)nullptr, u[2], p[0], *(Pipeline*)nullptr, {}
-        ),
+        invokeDrawFunctions(scene, RenderStage::ID(200), u[2], p[0]),
         std::out_of_range
     );
 
@@ -68,18 +95,18 @@ TEST(RasterSceneBaseTest, DrawFunctionExecution)
         scene.unregisterDrawFunction(id);
     }
 
-    ASSERT_TRUE(scene.iterPipelines(s[0], u[0]).empty());
-    ASSERT_TRUE(scene.iterPipelines(s[0], u[1]).empty());
-    ASSERT_TRUE(scene.iterPipelines(s[0], u[2]).empty());
-    ASSERT_TRUE(scene.iterPipelines(s[1], u[0]).empty());
-    ASSERT_TRUE(scene.iterPipelines(s[1], u[1]).empty());
-    ASSERT_TRUE(scene.iterPipelines(s[1], u[2]).empty());
-    ASSERT_TRUE(scene.iterPipelines(s[2], u[0]).empty());
-    ASSERT_TRUE(scene.iterPipelines(s[2], u[1]).empty());
-    ASSERT_TRUE(scene.iterPipelines(s[2], u[2]).empty());
+    ASSERT_TRUE(size(scene.iterPipelines(s[0], u[0])) == 0);
+    ASSERT_TRUE(size(scene.iterPipelines(s[0], u[1])) == 0);
+    ASSERT_TRUE(size(scene.iterPipelines(s[0], u[2])) == 0);
+    ASSERT_TRUE(size(scene.iterPipelines(s[1], u[0])) == 0);
+    ASSERT_TRUE(size(scene.iterPipelines(s[1], u[1])) == 0);
+    ASSERT_TRUE(size(scene.iterPipelines(s[1], u[2])) == 0);
+    ASSERT_TRUE(size(scene.iterPipelines(s[2], u[0])) == 0);
+    ASSERT_TRUE(size(scene.iterPipelines(s[2], u[1])) == 0);
+    ASSERT_TRUE(size(scene.iterPipelines(s[2], u[2])) == 0);
 
     numExecuted = 0;
-    scene.invokeDrawFunctions(s[0], *(RenderPass*)nullptr, u[2], p[1], *(Pipeline*)nullptr, {});
+    invokeDrawFunctions(scene, s[0], u[2], p[1]);
     ASSERT_EQ(numExecuted, 0);
 }
 
@@ -111,8 +138,8 @@ TEST(RasterSceneBaseTest, ThreadSafeRegistration)
     }
     for (auto& t : threads) t.join();
 
-    ASSERT_EQ(scene.iterPipelines(s[0], u[0]).size(), 5);
+    ASSERT_EQ(size(scene.iterPipelines(s[0], u[0])), 5);
 
-    scene.invokeDrawFunctions(s[0], *(RenderPass*)nullptr, u[0], p[0], *(Pipeline*)nullptr, {});
+    invokeDrawFunctions(scene, s[0], u[0], p[0]);
     ASSERT_EQ(numInvocations, 100);
 }

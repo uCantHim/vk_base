@@ -38,12 +38,12 @@ auto makeGBufferDrawFunction(s_ptr<DrawableRasterDrawInfo> drawInfo) -> Drawable
 {
     return [drawInfo](const DrawEnvironment& env, vk::CommandBuffer cmdBuf)
     {
-        const bool animated = drawInfo->anim != AnimationEngine::ID::NONE;
-
         auto layout = *env.currentPipeline->getLayout();
-        auto material = drawInfo->mat.getRuntime({ animated });
+        auto& material = drawInfo->matRuntime;
         material.pushConstants(cmdBuf, layout, DrawablePushConstIndex::eModelMatrix,
                                drawInfo->modelMatrixId.get());
+
+        const bool animated = drawInfo->anim != AnimationEngine::ID::NONE;
         if (animated)
         {
             material.pushConstants(
@@ -61,17 +61,12 @@ auto makeShadowDrawFunction(s_ptr<DrawableRasterDrawInfo> drawInfo) -> DrawableF
 {
     return [drawInfo](const DrawEnvironment& env, vk::CommandBuffer cmdBuf)
     {
-        auto currentRenderPass = dynamic_cast<RenderPassShadow*>(env.currentRenderPass);
-        assert(currentRenderPass != nullptr);
-
         // Bind buffers and push constants
         drawInfo->geo.bindVertices(cmdBuf, 0);
 
         auto layout = *env.currentPipeline->getLayout();
         cmdBuf.pushConstants<mat4>(layout, vk::ShaderStageFlagBits::eVertex,
                                    0, drawInfo->modelMatrixId.get());
-        cmdBuf.pushConstants<ui32>(layout, vk::ShaderStageFlagBits::eVertex,
-                                   sizeof(mat4), currentRenderPass->getShadowMatrixIndex());
         if (drawInfo->geo.hasRig())
         {
             cmdBuf.pushConstants<AnimationDeviceData>(

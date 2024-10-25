@@ -60,28 +60,6 @@ trc::RasterSceneBase::DrawableExecutionRegistration::RegistrationIndex::Registra
 
 
 
-auto trc::RasterSceneBase::PipelineListProxy::begin() const -> const_iterator
-{
-    return pipelines.begin();
-}
-
-auto trc::RasterSceneBase::PipelineListProxy::end() const -> const_iterator
-{
-    return pipelines.end();
-}
-
-bool trc::RasterSceneBase::PipelineListProxy::empty() const
-{
-    return pipelines.empty();
-}
-
-auto trc::RasterSceneBase::PipelineListProxy::size() const -> size_t
-{
-    return pipelines.size();
-}
-
-
-
 template<typename T>
 auto trc::RasterSceneBase::LockedStorage<T>::read() const
     -> std::pair<const T&, std::shared_lock<std::shared_mutex>>
@@ -135,42 +113,33 @@ auto trc::RasterSceneBase::writeDrawCalls(
 auto trc::RasterSceneBase::iterPipelines(
     RenderStage::ID renderStage,
     SubPass::ID subPass
-    ) const noexcept -> PipelineListProxy
+    ) const noexcept -> std::generator<Pipeline::ID>
 {
     {
         std::shared_lock lock(uniquePipelinesMutex);
         if (uniquePipelines.size() <= renderStage
             || uniquePipelines[renderStage].size() <= subPass)
         {
-            static std::vector<Pipeline::ID> emptyResult;
-            return { {}, emptyResult };
+            co_return;
         }
     }
 
     std::shared_lock lock(uniquePipelinesVectorMutex);
-    return { std::move(lock), uniquePipelinesVector[renderStage][subPass] };
+    for (const auto& pipeline : uniquePipelinesVector[renderStage][subPass]) {
+        co_yield pipeline;
+    }
 }
 
-void trc::RasterSceneBase::invokeDrawFunctions(
+auto trc::RasterSceneBase::iterDrawFunctions(
     RenderStage::ID renderStage,
-    RenderPass& renderPass,
     SubPass::ID subPass,
-    Pipeline::ID pipelineId,
-    Pipeline& pipeline,
-    vk::CommandBuffer cmdBuf) const
+    Pipeline::ID pipelineId) const
+    -> std::generator<const DrawableFunction&>
 {
-    DrawEnvironment env{
-        .currentRenderStage = renderStage,
-        .currentRenderPass = &renderPass,
-        .currentSubPass = subPass,
-        .currentPipeline = &pipeline,
-    };
-
     auto [drawCalls, _] = readDrawCalls(renderStage, subPass, pipelineId);
 
-    for (auto& f : drawCalls)
-    {
-        f.recordFunction(env, cmdBuf);
+    for (auto& f : drawCalls) {
+        co_yield f.recordFunction;
     }
 }
 

@@ -40,11 +40,11 @@ void RenderPassDrawTask::record(vk::CommandBuffer cmdBuf, ViewportDrawContext& c
             p.bind(cmdBuf, ctx.resources());
 
             // Record commands for all objects with this pipeline
-            scene.invokeDrawFunctions(
-                renderStage, *renderPass, subpass,
-                pipeline, p,
-                cmdBuf
-            );
+            const DrawEnvironment env{ .currentPipeline = &p };
+
+            for (auto& func : scene.iterDrawFunctions(renderStage, subpass, pipeline)) {
+                func(env, cmdBuf);
+            }
         }
     }
 
@@ -75,12 +75,16 @@ void ShadowMapDrawTask::record(vk::CommandBuffer cmdBuf, SceneUpdateContext& ctx
             auto& p = ctx.resources().getPipeline(pipeline);
             p.bind(cmdBuf, ctx.resources());
 
+            // Set renderpass-specific data
+            cmdBuf.pushConstants<ui32>(*p.getLayout(), vk::ShaderStageFlagBits::eVertex,
+                                       sizeof(mat4), renderPass.getShadowMatrixIndex());
+
             // Record commands for all objects with this pipeline
-            scene.invokeDrawFunctions(
-                renderStage, renderPass, subpass,
-                pipeline, p,
-                cmdBuf
-            );
+            const DrawEnvironment env{ .currentPipeline = &p };
+
+            for (auto& func : scene.iterDrawFunctions(renderStage, subpass, pipeline)) {
+                func(env, cmdBuf);
+            }
         }
     }
 

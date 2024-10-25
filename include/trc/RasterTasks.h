@@ -28,6 +28,10 @@ namespace trc
         s_ptr<RenderPass> renderPass;
     };
 
+    /**
+     * Always uploads the shadow matrix index as a push constant to the byte
+     * range `[64, 68)` with `vk::ShaderStageFlagBits::eVertex`.
+     */
     class ShadowMapDrawTask : public SceneUpdateTask
     {
     public:

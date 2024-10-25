@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <generator>
 #include <shared_mutex>
 #include <unordered_set>
 #include <vector>
@@ -16,9 +17,6 @@ namespace trc
 {
     struct DrawEnvironment
     {
-        RenderStage::ID currentRenderStage;
-        RenderPass* currentRenderPass;
-        SubPass::ID currentSubPass;
         Pipeline* currentPipeline;
     };
 
@@ -156,39 +154,6 @@ namespace trc
         using UniqueRegistrationID = UniqueDrawableRegistrationId;
 
         /**
-         * A proxy to a vector of pipelines which also holds a lock.
-         */
-        class PipelineListProxy
-        {
-        public:
-            using const_iterator = std::vector<Pipeline::ID>::const_iterator;
-
-            PipelineListProxy() = delete;
-            PipelineListProxy(const PipelineListProxy&) = delete;
-            PipelineListProxy& operator=(const PipelineListProxy&) = delete;
-            PipelineListProxy& operator=(PipelineListProxy&&) noexcept = delete;
-
-            PipelineListProxy(PipelineListProxy&&) noexcept = default;
-            ~PipelineListProxy() = default;
-
-            auto begin() const -> const_iterator;
-            auto end() const -> const_iterator;
-
-            bool empty() const;
-            auto size() const -> size_t;
-
-        private:
-            friend class RasterSceneBase;
-            PipelineListProxy(std::shared_lock<std::shared_mutex> lock,
-                          const std::vector<Pipeline::ID>& p)
-                : lock(std::move(lock)), pipelines(p)
-            {}
-
-            std::shared_lock<std::shared_mutex> lock;
-            const std::vector<Pipeline::ID>& pipelines;
-        };
-
-        /**
          * @brief Register a draw function at the scene.
          *
          * The draw function implements a draw call. It is always specific
@@ -223,29 +188,21 @@ namespace trc
         /**
          * @brief Get all pipelines used in a subpass
          *
-         * Locks the returned list of pipelines with a shared read-only
-         * lock. Adding new pipelines to the scene in the same thread that
-         * holds the returned `PipelineListProxy` object *will* result in a
-         * deadlock!
-         *
-         * This function is invoked internally by the renderer.
+         * Locks the list of pipelines while iterating. Adding new pipelines
+         * to the scene in the same thread that calls this coroutine *will*
+         * result in a deadlock!
          */
         auto iterPipelines(RenderStage::ID stage, SubPass::ID subPass) const noexcept
-            -> PipelineListProxy;
+            -> std::generator<Pipeline::ID>;
 
         /**
-         * @brief Invoke all registered draw functions of a subpass and pipeline
-         *
-         * This function is invoked internally by the renderer.
+         * Retrieve all draw functions registered for a specific combination of
+         * render stage, subpass, and pipeline.
          */
-        void invokeDrawFunctions(
-            RenderStage::ID stage,
-            RenderPass& renderPass,
-            SubPass::ID subPass,
-            Pipeline::ID pipelineId,
-            Pipeline& pipeline,
-            vk::CommandBuffer cmdBuf
-        ) const;
+        auto iterDrawFunctions(RenderStage::ID renderStage,
+                               SubPass::ID subPass,
+                               Pipeline::ID pipelineId) const
+            -> std::generator<const DrawableFunction&>;
 
     private:
         template<typename T>
