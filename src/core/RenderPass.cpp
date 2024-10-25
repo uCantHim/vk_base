@@ -1,7 +1,5 @@
 #include "trc/core/RenderPass.h"
 
-#include "trc/base/Swapchain.h"
-
 
 
 trc::RenderPass::RenderPass(vk::UniqueRenderPass renderPass, ui32 subpassCount)
@@ -24,4 +22,20 @@ auto trc::RenderPass::get() const noexcept -> vk::RenderPass
 auto trc::RenderPass::getNumSubPasses() const noexcept -> ui32
 {
     return numSubpasses;
+}
+
+auto trc::RenderPass::executeSubpasses(
+    vk::CommandBuffer cmdBuf,
+    vk::SubpassContents subpassContents) const
+    -> std::generator<SubPass::ID>
+{
+    const ui32 subPassCount = getNumSubPasses();
+    for (ui32 subPass = 0; subPass < subPassCount; subPass++)
+    {
+        co_yield SubPass::ID{ subPass };
+
+        if (subPass < subPassCount - 1) {
+            cmdBuf.nextSubpass(subpassContents);
+        }
+    }
 }

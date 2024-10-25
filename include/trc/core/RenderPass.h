@@ -1,5 +1,7 @@
 #pragma once
 
+#include <generator>
+
 #include "trc/Types.h"
 #include "trc/VulkanInclude.h"
 
@@ -34,6 +36,14 @@ namespace trc
         auto get() const noexcept -> vk::RenderPass;
 
         auto getNumSubPasses() const noexcept -> ui32;
+
+        /**
+         * Iterate over the render pass's subpasses in order, issuing
+         * `nextSubpass` commands after each one.
+         */
+        auto executeSubpasses(vk::CommandBuffer cmdBuf,
+                              vk::SubpassContents cnt = vk::SubpassContents::eInline) const
+            -> std::generator<SubPass::ID>;
 
         virtual void begin(vk::CommandBuffer cmdBuf,
                            vk::SubpassContents subpassContents,

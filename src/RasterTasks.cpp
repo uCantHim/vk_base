@@ -2,7 +2,6 @@
 
 #include "trc/RasterSceneModule.h"
 #include "trc/ShadowPool.h"
-#include "trc/TorchRenderStages.h"
 #include "trc/core/Frame.h"
 #include "trc/core/ResourceConfig.h"
 #include "trc/core/SceneBase.h"
@@ -32,10 +31,9 @@ void RenderPassDrawTask::record(vk::CommandBuffer cmdBuf, ViewportDrawContext& c
     renderPass->begin(cmdBuf, vk::SubpassContents::eInline, ctx.frame());
 
     // Record all commands
-    const ui32 subPassCount = renderPass->getNumSubPasses();
-    for (ui32 subPass = 0; subPass < subPassCount; subPass++)
+    for (auto subpass : renderPass->executeSubpasses(cmdBuf, vk::SubpassContents::eInline))
     {
-        for (auto pipeline : scene.iterPipelines(renderStage, SubPass::ID(subPass)))
+        for (auto pipeline : scene.iterPipelines(renderStage, subpass))
         {
             // Bind the current pipeline
             auto& p = ctx.resources().getPipeline(pipeline);
@@ -43,14 +41,10 @@ void RenderPassDrawTask::record(vk::CommandBuffer cmdBuf, ViewportDrawContext& c
 
             // Record commands for all objects with this pipeline
             scene.invokeDrawFunctions(
-                renderStage, *renderPass, SubPass::ID(subPass),
+                renderStage, *renderPass, subpass,
                 pipeline, p,
                 cmdBuf
             );
-        }
-
-        if (subPass < subPassCount - 1) {
-            cmdBuf.nextSubpass(vk::SubpassContents::eInline);
         }
     }
 
@@ -73,10 +67,9 @@ void ShadowMapDrawTask::record(vk::CommandBuffer cmdBuf, SceneUpdateContext& ctx
     renderPass.begin(cmdBuf, vk::SubpassContents::eInline, ctx.frame());
 
     // Record all commands
-    const ui32 subPassCount = renderPass.getNumSubPasses();
-    for (ui32 subPass = 0; subPass < subPassCount; subPass++)
+    for (auto subpass : renderPass.executeSubpasses(cmdBuf, vk::SubpassContents::eInline))
     {
-        for (auto pipeline : scene.iterPipelines(renderStage, SubPass::ID(subPass)))
+        for (auto pipeline : scene.iterPipelines(renderStage, subpass))
         {
             // Bind the current pipeline
             auto& p = ctx.resources().getPipeline(pipeline);
@@ -84,14 +77,10 @@ void ShadowMapDrawTask::record(vk::CommandBuffer cmdBuf, SceneUpdateContext& ctx
 
             // Record commands for all objects with this pipeline
             scene.invokeDrawFunctions(
-                renderStage, renderPass, SubPass::ID(subPass),
+                renderStage, renderPass, subpass,
                 pipeline, p,
                 cmdBuf
             );
-        }
-
-        if (subPass < subPassCount - 1) {
-            cmdBuf.nextSubpass(vk::SubpassContents::eInline);
         }
     }
 
