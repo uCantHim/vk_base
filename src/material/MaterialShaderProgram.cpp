@@ -182,12 +182,14 @@ auto collectPushConstants(const ShaderStageMap& stages)
     {
         if (mod.getPushConstantSize() <= 0) continue;
 
-        if (stage != vk::ShaderStageFlagBits::eVertex)
-        {
-            throw std::runtime_error("[In MaterialShaderProgram::makeLayout]: Not implemented:"
-                                     " a shader stage other than the vertex stage ("
-                                     + vk::to_string(stage) + ") has push constants defined.");
-        }
+        // TODO: Removed the hack for simple-material program, but I still need to
+        // fix this.
+        //if (stage != vk::ShaderStageFlagBits::eVertex)
+        //{
+        //    throw std::runtime_error("[In linkMaterialProgram]: Not implemented:"
+        //                             " a shader stage other than the vertex stage ("
+        //                             + vk::to_string(stage) + ") has push constants defined.");
+        //}
 
         for (const auto& pc : mod.getPushConstants())
         {
@@ -396,11 +398,14 @@ MaterialShaderProgram::MaterialShaderProgram(
     );
 
     // Create runtime push constant offsets
-    constexpr ui32 alloc = std::numeric_limits<ui32>::max();
     for (auto [offset, size, stages, userId] : data.pushConstants)
     {
+        constexpr ui32 alloc = std::numeric_limits<ui32>::max();
         runtimePcOffsets->resize(glm::max(size_t{userId + 1}, runtimePcOffsets->size()), alloc);
+        runtimePcStages->resize(glm::max(size_t{userId + 1}, runtimePcOffsets->size()));
+
         runtimePcOffsets->at(userId) = offset;
+        runtimePcStages->at(userId) = stages;
     }
 }
 
@@ -414,7 +419,7 @@ auto MaterialShaderProgram::makeRuntime() const -> MaterialRuntime
     assert(pipeline != Pipeline::ID::NONE);
     assert(runtimePcOffsets != nullptr);
 
-    return MaterialRuntime(pipeline, runtimePcOffsets);
+    return MaterialRuntime(pipeline, runtimePcOffsets, runtimePcStages);
 }
 
 } // namespace trc

@@ -119,6 +119,9 @@ namespace trc
 
         Pipeline::ID pipeline{ Pipeline::ID::NONE };
         s_ptr<std::vector<ui32>> runtimePcOffsets{ std::make_shared<std::vector<ui32>>() };
+        s_ptr<std::vector<vk::ShaderStageFlags>> runtimePcStages{
+            std::make_shared<std::vector<vk::ShaderStageFlags>>()
+        };
         std::vector<s_ptr<ShaderRuntimeConstant>> runtimeValues;  // Just keep the objects alive
     };
 } // namespace trc

@@ -11,7 +11,9 @@ namespace trc
 {
     struct MaterialRuntime
     {
-        MaterialRuntime(Pipeline::ID pipeline, s_ptr<std::vector<ui32>> pcOffsets);
+        MaterialRuntime(Pipeline::ID pipeline,
+                        const s_ptr<std::vector<ui32>>& pcOffsets,
+                        const s_ptr<std::vector<vk::ShaderStageFlags>>& pcStages);
 
         auto getPipeline() const -> Pipeline::ID;
 
@@ -24,6 +26,7 @@ namespace trc
     private:
         Pipeline::ID pipeline;
         s_ptr<std::vector<ui32>> pcOffsets;
+        s_ptr<std::vector<vk::ShaderStageFlags>> pcShaderStages;
     };
 
 
@@ -39,7 +42,7 @@ namespace trc
         assert(pcOffsets->at(pushConstantId) != std::numeric_limits<ui32>::max());
         assert(pushConstantId < pcOffsets->size());
 
-        cmdBuf.pushConstants<T>(layout, vk::ShaderStageFlagBits::eVertex,
+        cmdBuf.pushConstants<T>(layout, pcShaderStages->at(pushConstantId),
                                 pcOffsets->at(pushConstantId), value);
     }
 } // namespace trc
