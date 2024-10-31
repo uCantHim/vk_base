@@ -39,27 +39,6 @@ namespace trc
         bool rayTraced{ false };
     };
 
-    struct UniqueDrawableID
-    {
-        UniqueDrawableID(const UniqueDrawableID&) = delete;
-        UniqueDrawableID& operator=(const UniqueDrawableID&) = delete;
-
-        UniqueDrawableID(UniqueDrawableID&&) noexcept;
-        UniqueDrawableID& operator=(UniqueDrawableID&&) noexcept;
-        ~UniqueDrawableID() noexcept;
-
-        UniqueDrawableID() = default;
-        UniqueDrawableID(DrawableID drawable, DrawableScene& scene);
-
-        constexpr auto operator*() const -> DrawableID {
-            return id;
-        }
-
-    private:
-        DrawableID id{ DrawableID::NONE };
-        DrawableScene* scene{ nullptr };
-    };
-
     /**
      * @brief
      */
@@ -79,6 +58,12 @@ namespace trc
         auto getRoot() noexcept -> Node&;
         auto getRoot() const noexcept -> const Node&;
 
+        auto makeDrawable(const DrawableCreateInfo& createInfo) -> Drawable;
+
+    private:
+        template<componentlib::ComponentType T>
+        friend struct componentlib::ComponentTraits;
+
         /**
          * @brief A more expressive name for `createObject`
          */
@@ -86,22 +71,12 @@ namespace trc
             return createObject();
         }
 
-        inline auto makeUniqueDrawable() -> UniqueDrawableID {
-            return UniqueDrawableID{ makeDrawable(), *this };
-        }
-
-        auto makeDrawable(const DrawableCreateInfo& createInfo) -> Drawable;
-
         /**
          * @brief A more expressive name for `deleteObject`
          */
         inline void destroyDrawable(DrawableID drawable) {
             deleteObject(drawable);
         }
-
-    private:
-        template<componentlib::ComponentType T>
-        friend struct componentlib::ComponentTraits;
 
         void updateAnimations(float timeDelta);
 
