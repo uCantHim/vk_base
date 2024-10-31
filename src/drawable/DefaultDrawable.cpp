@@ -1,10 +1,6 @@
 #include "trc/drawable/DefaultDrawable.h"
 
-#include "trc/TorchRenderStages.h"
-#include "trc/GBufferPass.h"
-#include "trc/RenderPassShadow.h"
 #include "trc/DrawablePipelines.h"
-
 #include "trc/material/MaterialRuntime.h"
 #include "trc/material/VertexShader.h" // For the DrawablePushConstIndex enum
 
@@ -51,6 +47,7 @@ auto makeGBufferDrawFunction(s_ptr<DrawableRasterDrawInfo> drawInfo) -> Drawable
                 drawInfo->anim.get()
             );
         }
+        material.uploadPushConstantData(cmdBuf, layout);
 
         drawInfo->geo.bindVertices(cmdBuf, 0);
         cmdBuf.drawIndexed(drawInfo->geo.getIndexCount(), 1, 0, 0, 0);
@@ -61,19 +58,18 @@ auto makeShadowDrawFunction(s_ptr<DrawableRasterDrawInfo> drawInfo) -> DrawableF
 {
     return [drawInfo](const DrawEnvironment& env, vk::CommandBuffer cmdBuf)
     {
-        // Bind buffers and push constants
+        auto layout = *env.currentPipeline->getLayout();
+
+        // Bind buffers and upload data
         drawInfo->geo.bindVertices(cmdBuf, 0);
 
-        auto layout = *env.currentPipeline->getLayout();
         cmdBuf.pushConstants<mat4>(layout, vk::ShaderStageFlagBits::eVertex,
                                    0, drawInfo->modelMatrixId.get());
-        if (drawInfo->geo.hasRig())
+        if (drawInfo->anim != AnimationEngine::ID::NONE)
         {
             cmdBuf.pushConstants<AnimationDeviceData>(
                 layout, vk::ShaderStageFlagBits::eVertex, sizeof(mat4) + sizeof(ui32),
-                drawInfo->anim != AnimationEngine::ID::NONE
-                    ? drawInfo->anim.get()
-                    : AnimationDeviceData{}
+                drawInfo->anim.get()
             );
         }
 

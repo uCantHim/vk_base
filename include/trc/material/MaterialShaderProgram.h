@@ -58,7 +58,7 @@ namespace trc
         {
             ui32 offset;
             ui32 size;
-            vk::ShaderStageFlags shaderStages;
+            vk::ShaderStageFlagBits shaderStage;
 
             ui32 userId;
         };
@@ -69,7 +69,26 @@ namespace trc
             vk::ShaderStageFlagBits,
             std::vector<std::pair<ui32, s_ptr<ShaderRuntimeConstant>>>
         > specConstants;
+
+        /**
+         * A list of push constant ranges.
+         *
+         * These are *not* the physical byte ranges accessed in shaders. These
+         * represent the semantical, user-accessible push constant values that
+         * were specified as resources or capabilities and can be referenced
+         * with user-supplied IDs. These are therefore subranges of the final
+         * combined push constant ranges that are specified for shader modules.
+         */
         std::vector<PushConstantRange> pushConstants;
+
+        /**
+         * A push constant range for each shader stage.
+         *
+         * These are the combined, physical byte ranges which are accessed in
+         * shaders as push constants.
+         */
+        std::unordered_map<vk::ShaderStageFlagBits, vk::PushConstantRange> pcRangesPerStage;
+
         std::vector<PipelineLayoutTemplate::Descriptor> descriptorSets;
 
         /**
@@ -116,8 +135,8 @@ namespace trc
 
         PipelineLayoutTemplate layoutTemplate;
         PipelineLayout::ID layout;
+        Pipeline::ID pipeline;
 
-        Pipeline::ID pipeline{ Pipeline::ID::NONE };
         s_ptr<std::vector<ui32>> runtimePcOffsets{ std::make_shared<std::vector<ui32>>() };
         s_ptr<std::vector<vk::ShaderStageFlags>> runtimePcStages{
             std::make_shared<std::vector<vk::ShaderStageFlags>>()

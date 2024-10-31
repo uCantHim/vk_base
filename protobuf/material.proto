@@ -63,6 +63,13 @@ message Material
         bool animated = 2;
     }
 
+    message RuntimeValueDefault
+    {
+        uint32 push_constant_id = 1;
+        bytes data = 2;
+    }
+
     Settings settings = 1;
     repeated Specialization specializations = 2;
+    repeated RuntimeValueDefault runtime_values = 3;
 }

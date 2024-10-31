@@ -1,10 +1,9 @@
 #include "trc/material/ShaderResourceInterface.h"
 
+#include <format>
 #include <sstream>
 
 #include <trc_util/Util.h>
-
-#include "trc/material/FragmentShader.h"
 
 
 
@@ -65,11 +64,11 @@ auto ShaderResources::getPushConstants() const -> std::vector<PushConstantInfo>
     return result;
 }
 
-auto ShaderResources::getPushConstantInfo(ResourceID resource) const
-    -> std::optional<PushConstantInfo>
+auto ShaderResources::getPushConstantOffsetPlaceholder(ui32 pushConstantId) const
+    -> std::optional<std::string>
 {
-    if (pushConstantInfos.contains(resource)) {
-        return pushConstantInfos.at(resource);
+    if (pushConstantInfos.contains(pushConstantId)) {
+        return pushConstantInfos.at(pushConstantId).offsetPlaceholder;
     }
     return std::nullopt;
 }
@@ -136,25 +135,46 @@ auto ShaderResourceInterface::DescriptorBindingFactory::getDescriptorSetPlacehol
 
 
 auto ShaderResourceInterface::PushConstantFactory::make(
-    ResourceID resource,
+    ResourceID /*resource*/,
     const ShaderCapabilityConfig::PushConstant& pc) -> std::string
 {
     const auto byteSize = code::types::getTypeSize(pc.type);
     assert(byteSize > 0);
 
-    infos.try_emplace(resource, PushConstantInfo{ totalSize, byteSize, pc.userId });
+    const std::string name = "_push_constant_" + std::to_string(pc.userId);
+    const std::string offsetPlaceholder = name + "_offset";
 
-    const std::string name = "_push_constant_" + std::to_string(totalSize);
+    infos.try_emplace(
+        pc.userId,
+        PushConstantInfo{
+            .offset=totalSize,
+            .size=byteSize,
+            .userId=pc.userId,
+            .offsetPlaceholder=offsetPlaceholder
+        }
+    );
     totalSize += byteSize;
-    code += code::types::to_string(pc.type) + " " + name + ";\n";
 
-    return "pushConstants." + name;
+    code += std::format(
+        "layout (offset=${}) {} {};\n",
+        offsetPlaceholder,
+        code::types::to_string(pc.type),
+        name
+    );
+
+    return std::format("{}.{}", kPcBlockNamespaceName, name);
 }
 
 auto ShaderResourceInterface::PushConstantFactory::getCode() const -> std::string
 {
-    if (!code.empty()) {
-        return "layout (push_constant) uniform PushConstants\n{\n" + code + "} pushConstants;\n";
+    if (!code.empty())
+    {
+        return std::format(
+            "layout (push_constant) uniform {} \n{{\n{}\n}} {};",
+            kPcBlockName,
+            code,
+            kPcBlockNamespaceName
+        );
     }
     return "";
 }

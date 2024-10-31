@@ -1,7 +1,6 @@
 // Descriptor binding declarations for the asset descriptor
 
 #include "material.glsl"
-#include "material_utils/simple_material.glsl"
 #include "vertex.glsl"
 
 struct AnimationMetaData
@@ -17,7 +16,6 @@ struct AnimationMetaData
 #define GEO_INDEX_BINDING $geometry_index_descriptor_binding
 #define ANIM_META_BINDING $animation_meta_descriptor_binding
 #define ANIM_DATA_BINDING $animation_data_descriptor_binding
-#define MAT_PARAMS_BINDING $material_params_descriptor_binding
 
 layout (set = ASSET_DESCRIPTOR_SET_BINDING, binding = TEX_BINDING)
     uniform sampler2D textures[];
@@ -50,9 +48,3 @@ layout (set = ASSET_DESCRIPTOR_SET_BINDING, binding = ANIM_DATA_BINDING, std140)
     // Animations start at offsets defined in the AnimationMetaData array
     mat4 boneMatrices[];
 } animations;
-
-layout (set = ASSET_DESCRIPTOR_SET_BINDING, binding = MAT_PARAMS_BINDING, std430)
-    restrict readonly buffer MaterialParameterBuffer
-{
-    MaterialParameters materials[];
-} simpleMaterialParams;

@@ -16,7 +16,7 @@ trc::RasterComponent::RasterComponent(const RasterComponentCreateInfo& createInf
         .geo=geoHandle,
         .mat=matHandle,
         .matRuntime=matHandle.getRuntime({
-            .animated=geoHandle.hasRig(),
+            .animated=geoHandle.hasRig() && createInfo.anim != AnimationEngine::ID::NONE,
         }),
         .modelMatrixId=createInfo.modelMatrixId,
         .anim=createInfo.anim,
@@ -24,7 +24,7 @@ trc::RasterComponent::RasterComponent(const RasterComponentCreateInfo& createInf
 }
 
 void componentlib::ComponentTraits<trc::RasterComponent>::onCreate(
-    trc::DrawableScene& storage,
+    trc::DrawableScene& scene,
     trc::DrawableID /*drawable*/,
     trc::RasterComponent& comp)
 {
@@ -37,7 +37,7 @@ void componentlib::ComponentTraits<trc::RasterComponent>::onCreate(
         .animated=comp.drawInfo->geo.hasRig(),
         .transparent=comp.drawInfo->mat.isTransparent(),
     };
-    RasterSceneBase& base = storage.getRasterModule();
+    RasterSceneBase& base = scene.getRasterModule();
 
     // Create a storage for the draw functions with automatic lifetime
     using SubPasses = GBufferPass::SubPasses;

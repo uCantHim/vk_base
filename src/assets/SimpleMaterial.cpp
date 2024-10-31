@@ -42,37 +42,29 @@ void SimpleMaterialData::deserialize(std::istream& is)
 
 auto makeMaterial(const SimpleMaterialData& data) -> MaterialData
 {
-    constexpr ui32 kMatBufferIndexPcId = DrawablePushConstIndex::eMaterialData;
-    constexpr auto kCapCurrentMat = "simplemat_param_struct";
+    constexpr auto kCapCurrentMat = "simplemat_param_obj";
 
     ShaderModuleBuilder builder;
     auto capabilities = makeFragmentCapabilityConfig();
 
-    // Declare resources: the buffer index (runtime value) and the buffer descriptor
-    auto matIndex = capabilities.addResource(ShaderCapabilityConfig::PushConstant{
-        ui32{},
-        kMatBufferIndexPcId
-    });
-    auto desc = capabilities.addResource(ShaderCapabilityConfig::DescriptorBinding{
-        .setName=AssetPlugin::ASSET_DESCRIPTOR,
-        .bindingIndex=AssetDescriptor::getBindingIndex(AssetDescriptorBinding::eMaterialParameterBuffer),
-        .descriptorType="restrict readonly buffer",
-        .descriptorName="MaterialParameterBuffer",
-        .isArray=false,
-        .layoutQualifier="std430",
-        .descriptorContent="MaterialParameters materials[];",
-    });
-    capabilities.addShaderInclude(desc, util::Pathlet{"material_utils/simple_material.glsl"});
-
-    // Create the current-material-struct capability
-    capabilities.linkCapability(
-        kCapCurrentMat,
-        builder.makeArrayAccess(
-            builder.makeMemberAccess(capabilities.accessResource(desc), "materials"),
-            capabilities.accessResource(matIndex)
-        ),
-        { matIndex, desc }
+    // Declare the material data struct as a push constant
+    auto pcStructType = builder.makeStructType(
+        "MaterialParameters",
+        {
+            { vec3{},  "color" },
+            { float{}, "specularFactor" },
+            { float{}, "roughness" },
+            { float{}, "metallicness" },
+            { uint{},  "albedoTexture" },
+            { uint{},  "normalTexture" },
+            { bool{},  "emissive" },
+        }
     );
+    auto pc = capabilities.addResource(ShaderCapabilityConfig::PushConstant{
+        pcStructType,
+        DrawablePushConstIndex::eMaterialData,
+    });
+    capabilities.linkCapability(kCapCurrentMat, pc);
 
     auto mat = builder.makeCapabilityAccess(kCapCurrentMat);
     auto colorParam        = builder.makeMemberAccess(mat, "color");
@@ -82,11 +74,11 @@ auto makeMaterial(const SimpleMaterialData& data) -> MaterialData
     auto emissiveParam     = builder.makeMemberAccess(mat, "emissive");
 
     // TODO: This remains the old, non-dynamic way until the buffer is implemented.
-    colorParam        = builder.makeConstant(data.color);
-    specularParam     = builder.makeConstant(data.specularCoefficient);
-    roughnessParam    = builder.makeConstant(data.roughness);
-    metallicnessParam = builder.makeConstant(data.metallicness);
-    emissiveParam     = builder.makeConstant(data.emissive);
+    //colorParam        = builder.makeConstant(data.color);
+    //specularParam     = builder.makeConstant(data.specularCoefficient);
+    //roughnessParam    = builder.makeConstant(data.roughness);
+    //metallicnessParam = builder.makeConstant(data.metallicness);
+    //emissiveParam     = builder.makeConstant(data.emissive);
 
     // Build output values
     code::Value opacity = builder.makeConstant(data.opacity);
@@ -125,10 +117,40 @@ auto makeMaterial(const SimpleMaterialData& data) -> MaterialData
                       builder.makeCast<float>(emissiveParam));
 
     const bool transparent = data.opacity < 1.0f;
-    return MaterialData{
+    auto res = MaterialData{
         frag.build(std::move(builder), transparent, capabilities),
         transparent
     };
+
+    struct PcData
+    {
+        vec3 color;
+        float specularFactor;
+        float roughness;
+        float metallicness;
+        ui32 albedoTexture;
+        ui32 normalTexture;
+        bool emissive;
+    };
+
+    PcData pcData{
+        data.color,
+        data.specularCoefficient,
+        data.roughness,
+        data.metallicness,
+        std::numeric_limits<ui32>::max(),
+        std::numeric_limits<ui32>::max(),
+        data.emissive
+    };
+    res.runtimeValueDefaults.emplace_back(
+        DrawablePushConstIndex::eMaterialData,
+        std::vector<std::byte>{
+            reinterpret_cast<const std::byte*>(&pcData),
+            reinterpret_cast<const std::byte*>(&pcData) + sizeof(PcData)
+        }
+    );
+
+    return res;
 }
 
 } // namespace trc

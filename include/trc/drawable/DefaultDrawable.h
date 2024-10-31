@@ -3,8 +3,8 @@
 #include "trc/AnimationEngine.h"
 #include "trc/DrawablePipelines.h"
 #include "trc/Transformation.h"
-#include "trc/assets/Geometry.h"
-#include "trc/assets/Material.h"
+#include "trc/assets/GeometryRegistry.h"
+#include "trc/assets/MaterialRegistry.h"
 #include "trc/RasterSceneBase.h"
 
 namespace trc

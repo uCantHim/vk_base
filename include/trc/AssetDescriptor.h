@@ -64,11 +64,6 @@ namespace trc
         // GLSL format: `sampler2D[]`
         eTextureSamplers,
 
-        // A storage buffer.
-        //
-        // GLSL format: `std430 buffer{ SimpleMaterialData mats[]; }`
-        eMaterialParameterBuffer,
-
         // An array of samplers. Contains one sampler for each registered
         // glyph map.
         //

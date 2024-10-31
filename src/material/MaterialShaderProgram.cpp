@@ -85,7 +85,8 @@ auto compileShader(
 
 auto compileProgram(
     const ShaderStageMap& stages,
-    const std::vector<PipelineLayoutTemplate::Descriptor>& descriptors)
+    const std::vector<PipelineLayoutTemplate::Descriptor>& descriptors,
+    const std::vector<MaterialProgramData::PushConstantRange>& pushConstants)
     -> std::unordered_map<vk::ShaderStageFlagBits, std::vector<ui32>>
 {
     std::unordered_map<vk::ShaderStageFlagBits, std::vector<ui32>> result;
@@ -104,20 +105,36 @@ auto compileProgram(
             ++i;
         }
 
+        // Set push constant offsets in the shader code
+        for (const auto& pc : pushConstants)
+        {
+            if (auto varName = mod.getPushConstantOffsetPlaceholder(pc.userId)) {
+                doc.set(*varName, pc.offset);
+            }
+        }
+
         // Try to compile to SPIRV
         try {
             result.emplace(stage, compileShader(stage, doc.compile()));
             log::info << "Compiling GLSL code for " << vk::to_string(stage) << " stage to SPIRV"
                       << " (" << timer.reset() << " ms)";
         }
+        catch (const shader_edit::CompileError& err)
+        {
+            log::info << "Compiling GLSL code for " << vk::to_string(stage) << " stage to SPIRV.";
+            log::error << "[In linkMaterialProgram]: Unable to finalize shader code for"
+                       << " SPIRV conversion (shader stage " << vk::to_string(stage) << ")"
+                       << ": " << err.what();
+            throw err;
+        }
         catch (const std::runtime_error& err)
         {
             log::info << "Compiling GLSL code for " << vk::to_string(stage) << " stage to SPIRV"
                       << " -- ERROR!";
-            log::error << "[In makeMaterialProgram]: Unable to compile shader code for stage "
+            log::error << "[In linkMaterialProgram]: Unable to compile shader code for stage "
                        << vk::to_string(stage) << " to SPIRV: " << err.what() << "\n"
                        << "  >>> Tried to compile the following shader code:\n\n"
-                       << mod.getGlslCode()
+                       << doc.compile()
                        << "\n+++++ END SHADER CODE +++++\n";
         }
     }
@@ -178,56 +195,56 @@ auto collectPushConstants(const ShaderStageMap& stages)
     using Range = MaterialProgramData::PushConstantRange;
 
     std::vector<Range> pcRanges;
+    ui32 totalOffset{ 0 };
     for (const auto& [stage, mod] : stages)
     {
         if (mod.getPushConstantSize() <= 0) continue;
 
-        // TODO: Removed the hack for simple-material program, but I still need to
-        // fix this.
-        //if (stage != vk::ShaderStageFlagBits::eVertex)
-        //{
-        //    throw std::runtime_error("[In linkMaterialProgram]: Not implemented:"
-        //                             " a shader stage other than the vertex stage ("
-        //                             + vk::to_string(stage) + ") has push constants defined.");
-        //}
-
         for (const auto& pc : mod.getPushConstants())
         {
             pcRanges.push_back(Range{
-                .offset=pc.offset,
+                .offset=pc.offset + totalOffset,
                 .size=pc.size,
-                .shaderStages=stage,
+                .shaderStage=stage,
                 .userId=pc.userId,
             });
         }
+
+        /**
+         * The push constants of each stage have their offsets specified with
+         * respect to all preceding ranges of the same stage. To each range of
+         * subsequent stages, add the total offset of all previous stages.
+         *
+         * The 16-byte padding is, strictly speaking, slightly over-secure.
+         * Theoretically, each member must be offset by a multiple of its own
+         * alignment. However, I don't want to figure out the the first member
+         * in the next push constant range and deduce its alignment from its
+         * type right now. 16 bytes are the largest possible alignment (e.g. of
+         * 4x4 matrices) and it always works.
+         */
+        totalOffset += util::pad_16(mod.getPushConstantSize());
     }
 
     return pcRanges;
 }
 
-auto MaterialProgramData::makeLayout() const -> PipelineLayoutTemplate
+auto combinePushConstantsPerStage(
+    const std::vector<MaterialProgramData::PushConstantRange>& pushConstants)
+    -> std::unordered_map<vk::ShaderStageFlagBits, vk::PushConstantRange>
 {
-    using Hash = decltype([](vk::ShaderStageFlags flags){ return static_cast<ui32>(flags); });
-
-    std::unordered_map<vk::ShaderStageFlags, vk::PushConstantRange, Hash> perStage;
+    // Combine push constant ranges into a single one for each shader stage
+    std::unordered_map<vk::ShaderStageFlagBits, vk::PushConstantRange> perStage;
     for (const auto& range : pushConstants)
     {
-        auto [it, _] = perStage.try_emplace(range.shaderStages,
-                                            vk::PushConstantRange(range.shaderStages, 0, 0));
+        constexpr ui32 _off = std::numeric_limits<ui32>::max();
+        auto [it, _] = perStage.try_emplace(range.shaderStage,
+                                            vk::PushConstantRange(range.shaderStage, _off, 0));
         vk::PushConstantRange& totalRange = it->second;
         totalRange.size += range.size;
+        totalRange.offset = std::min(totalRange.offset, range.offset);
     }
 
-    std::vector<PipelineLayoutTemplate::PushConstant> pushConstants;
-    for (const auto& [stage, range] : perStage)
-    {
-        pushConstants.push_back({
-            .range=range,
-            .defaultValue=std::nullopt
-        });
-    }
-
-    return PipelineLayoutTemplate{ descriptorSets, std::move(pushConstants) };
+    return perStage;
 }
 
 auto linkMaterialProgram(
@@ -246,11 +263,28 @@ auto linkMaterialProgram(
         }
     }
     data.pushConstants = collectPushConstants(stages);
+    data.pcRangesPerStage = combinePushConstantsPerStage(data.pushConstants);
     data.descriptorSets = collectDescriptorSets(stages, descConfig);
 
-    data.spirvCode = compileProgram(stages, data.descriptorSets);
+    // Compile each shader module to SPIR-V
+    data.spirvCode = compileProgram(stages, data.descriptorSets, data.pushConstants);
 
     return data;
+}
+
+auto MaterialProgramData::makeLayout() const -> PipelineLayoutTemplate
+{
+    // Convert to PipelineLayoutTemplate's format
+    std::vector<PipelineLayoutTemplate::PushConstant> pushConstants;
+    for (const auto& [stage, range] : pcRangesPerStage)
+    {
+        pushConstants.push_back({
+            .range=range,
+            .defaultValue=std::nullopt
+        });
+    }
+
+    return PipelineLayoutTemplate{ descriptorSets, std::move(pushConstants) };
 }
 
 auto MaterialProgramData::serialize() const -> serial::ShaderProgram
@@ -275,7 +309,7 @@ auto MaterialProgramData::serialize() const -> serial::ShaderProgram
         auto pc = prog.add_push_constants();
         pc->set_offset(range.offset);
         pc->set_size(range.size);
-        pc->set_shader_stage_flags(static_cast<ui32>(range.shaderStages));
+        pc->set_shader_stage_flags(static_cast<ui32>(range.shaderStage));
         pc->set_user_id(range.userId);
     }
 
@@ -326,7 +360,7 @@ void MaterialProgramData::deserialize(
         pushConstants.push_back({
             .offset=range.offset(),
             .size=range.size(),
-            .shaderStages=vk::ShaderStageFlags(range.shader_stage_flags()),
+            .shaderStage=vk::ShaderStageFlagBits(range.shader_stage_flags()),
             .userId=range.user_id()
         });
     }

@@ -144,14 +144,6 @@ AssetDescriptor::AssetDescriptor(const Device& device, const AssetDescriptorCrea
             | vk::DescriptorBindingFlagBits::eUpdateAfterBind
     ));
 
-    bindings.emplace(AssetDescriptorBinding::eMaterialParameterBuffer, builder.addBinding(
-        vk::DescriptorType::eStorageBuffer,
-        info.maxSimpleMaterials,
-        vk::ShaderStageFlagBits::eAll,
-        vk::DescriptorBindingFlagBits::ePartiallyBound
-            | vk::DescriptorBindingFlagBits::eUpdateAfterBind
-    ));
-
     // Font related bindings
     bindings.emplace(AssetDescriptorBinding::eGlyphMapSamplers, builder.addBinding(
         vk::DescriptorType::eCombinedImageSampler,
@@ -184,7 +176,6 @@ AssetDescriptor::AssetDescriptor(const Device& device, const AssetDescriptorCrea
     assertIndex(AssetDescriptorBinding::eGeometryIndexBuffers);
     assertIndex(AssetDescriptorBinding::eGeometryVertexBuffers);
     assertIndex(AssetDescriptorBinding::eTextureSamplers);
-    assertIndex(AssetDescriptorBinding::eMaterialParameterBuffer);
     assertIndex(AssetDescriptorBinding::eGlyphMapSamplers);
     assertIndex(AssetDescriptorBinding::eAnimationMetadata);
     assertIndex(AssetDescriptorBinding::eAnimationData);

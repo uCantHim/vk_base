@@ -7,7 +7,6 @@ target_sources(
         FragmentShader.cpp
         MaterialRuntime.cpp
         MaterialShaderProgram.cpp
-        MaterialSpecialization.cpp
         ShaderCapabilityConfig.cpp
         ShaderCodeBuilder.cpp
         ShaderCodeCompiler.cpp

@@ -53,25 +53,19 @@ namespace trc
         };
 
         MaterialKey() = default;
-        MaterialKey(MaterialSpecializationInfo info);
 
-        bool operator==(const MaterialKey& rhs) const;
+        MaterialKey(const MaterialSpecializationInfo& info)
+        {
+            if (info.animated) flags |= Flags::Animated::eTrue;
+        }
+
+        bool operator==(const MaterialKey& rhs) const {
+            return flags.toIndex() == rhs.flags.toIndex();
+        }
 
         MaterialSpecializationFlags flags;
     };
-
-    /**
-     * @brief Create a full shader program from basic material information
-     */
-    auto makeMaterialSpecialization(ShaderModule fragmentModule,
-                                    const MaterialKey& info)
-        -> std::unordered_map<vk::ShaderStageFlagBits, ShaderModule>;
 } // namespace trc
 
 template<>
-struct std::hash<trc::MaterialKey>
-{
-    constexpr auto operator()(const trc::MaterialKey& key) const -> size_t {
-        return trc::MaterialKey::Hash{}(key);
-    }
-};
+struct std::hash<trc::MaterialKey> : trc::MaterialKey::Hash {};

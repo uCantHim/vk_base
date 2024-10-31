@@ -6,10 +6,9 @@ Shader assetRegistryDescriptor:
     Variable geometry_index_descriptor_binding: "0"
     Variable geometry_vertex_descriptor_binding: "1"
     Variable texture_descriptor_binding: "2"
-    Variable material_params_descriptor_binding: "3"
-    Variable font_descriptor_binding: "4"
-    Variable animation_meta_descriptor_binding: "5"
-    Variable animation_data_descriptor_binding: "6"
+    Variable font_descriptor_binding: "3"
+    Variable animation_meta_descriptor_binding: "4"
+    Variable animation_data_descriptor_binding: "5"
 
 Program empty:
     VertexShader:

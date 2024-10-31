@@ -68,6 +68,11 @@ namespace trc
             //
             // Used to interface with `MaterialRuntime::pushConstants`.
             ui32 userId;
+
+            // A placeholder variable in the generated GLSL code. This must
+            // be replaced by the final byte offset of the push constant in the
+            // full shader program.
+            std::string offsetPlaceholder;
         };
 
         struct PayloadInfo
@@ -161,18 +166,40 @@ namespace trc
         auto getPushConstantSize() const -> ui32;
 
         /**
+         * The push constant ranges returned will include possible the base
+         * offset specified via `setPushConstantBaseOffset`, if any.
+         *
          * @return std::vector<PushConstantInfo> All push constants used by the
          *                                       shader module.
          */
         auto getPushConstants() const -> std::vector<PushConstantInfo>;
 
         /**
-         * @brief Query information about a specific push constant resource
+         * @brief Get the offset-placeholder variable for a push constant
          *
-         * @return nullopt if the resource ID does not exist or it is not
-         *         associated with an active push constant value.
+         * @param ui32 pushConstantId A user ID that identifies a push constant.
+         *
+         * # Example
+         *
+         * ```cpp
+         * #include <shader_tools/ShaderDocument.h>
+         *
+         * ShaderResources res = ...;
+         *
+         * shader_edit::ShaderDocument doc(res.getGlslCode());
+         * doc.set(*res.getPushConstantOffsetPlaceholder(kPcVertex), 0);
+         * doc.set(*res.getPushConstantOffsetPlaceholder(kPcFragment), 64);
+         *
+         * auto resourceCode = doc.compile();
+         * ```
+         *
+         * @return std::optional<std::string> The name of the placeholder
+         *         variable for the push constant's byte offset. nullopt if the
+         *         push constant is not required by the shader module or if no
+         *         push constant with the specified ID exists.
          */
-        auto getPushConstantInfo(ResourceID resource) const -> std::optional<PushConstantInfo>;
+        auto getPushConstantOffsetPlaceholder(ui32 pushConstantId) const
+            -> std::optional<std::string>;
 
         auto getRequiredPayloads() const -> const std::vector<PayloadInfo>&;
 
@@ -187,7 +214,8 @@ namespace trc
         std::vector<SpecializationConstantInfo> specConstants;
         std::unordered_map<std::string, std::string> descriptorSetIndexPlaceholders;
 
-        std::unordered_map<ResourceID, PushConstantInfo> pushConstantInfos;
+        // Map { pcUserId -> PushConstantInfo }
+        std::unordered_map<ui32, PushConstantInfo> pushConstantInfos;
         ui32 pushConstantSize;
     };
 
@@ -256,8 +284,12 @@ namespace trc
             auto getCode() const -> std::string;
 
         private:
+            static constexpr auto kPcBlockName{ "PushConstants" };
+            static constexpr auto kPcBlockNamespaceName{ "pushConstants" };
+
             ui32 totalSize{ 0 };
-            std::unordered_map<ResourceID, PushConstantInfo> infos;
+            // Map { pcUserId -> PushConstantInfo }
+            std::unordered_map<ui32, PushConstantInfo> infos;
 
             std::string code;
         };
