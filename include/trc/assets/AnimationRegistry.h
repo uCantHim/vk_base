@@ -1,13 +1,17 @@
 #pragma once
 
+#include <iosfwd>
 #include <mutex>
+#include <string>
+#include <string_view>
+#include <vector>
 
-#include "trc/base/Buffer.h"
 #include <componentlib/Table.h>
 #include <trc_util/data/IdPool.h>
 
 #include "trc/Types.h"
-#include "trc/assets/AssetID.h"
+#include "trc/base/Buffer.h"
+#include "trc/assets/AssetManagerBase.h"  // For asset ID types
 #include "trc/assets/AssetRegistryModule.h"
 #include "trc/assets/AssetSource.h"
 #include "trc/assets/SharedDescriptorSet.h"

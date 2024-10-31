@@ -7,7 +7,6 @@
 
 #include <trc_util/Util.h>
 
-#include "trc/assets/AssetID.h"
 #include "trc/assets/AssetPath.h"
 #include "trc/assets/AssetManager.h"
 #include "trc/assets/AssetSource.h"  // This is not strictly necessary, a forward declaration works as well

@@ -1,5 +1,9 @@
 #pragma once
 
+#include <iosfwd>
+#include <string>
+#include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #include <componentlib/Table.h>
@@ -7,9 +11,10 @@
 
 #include "trc/Types.h"
 #include "trc/assets/AnimationRegistry.h"
+#include "trc/assets/AssetManagerBase.h"  // For asset ID types
+#include "trc/assets/AssetReference.h"
 #include "trc/assets/AssetRegistryModule.h"
 #include "trc/assets/AssetSource.h"
-#include "trc/assets/AssetReference.h"
 
 namespace trc
 {

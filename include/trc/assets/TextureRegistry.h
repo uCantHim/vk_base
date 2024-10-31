@@ -10,7 +10,7 @@
 #include <trc_util/data/IndexMap.h>
 #include <trc_util/data/IdPool.h>
 
-#include "trc/assets/AssetManager.h"  // For TypedAssetID
+#include "trc/assets/AssetManagerBase.h"  // For asset ID types
 #include "trc/assets/AssetRegistryModule.h"
 #include "trc/assets/AssetSource.h"
 #include "trc/assets/DeviceDataCache.h"

@@ -56,7 +56,7 @@ namespace trc
         using TypeIndex = data::TypeIndexAllocator<AssetRegistryModuleStorage>;
 
         std::mutex entriesLock;
-        componentlib::Table<u_ptr<AssetRegistryModuleInterfaceCommon>> entries;
+        componentlib::Table<u_ptr<internal::AssetRegistryModuleInterfaceBase>> entries;
     };
 
 

@@ -20,12 +20,14 @@ namespace trc
 {
     class AssetManagerBase;
 
-    struct _AssetIdTypeTag {};
+    namespace internal {
+        struct _AssetIdTypeTag {};
+    }
 
     /**
      * @brief ID for basic metadata that is shared by all asset types
      */
-    using AssetID = data::HardTypesafeID<_AssetIdTypeTag, AssetManagerBase, ui32>;
+    using AssetID = data::HardTypesafeID<internal::_AssetIdTypeTag, AssetManagerBase, ui32>;
 
     /**
      * @brief ID for a specific asset type
@@ -88,17 +90,18 @@ namespace trc
      * asset which it references was destroyed.
      *
      * # Example
-     * @code
-     *  auto id = assetManager.create<Geometry>(myDataSource);
-     *  assetManager.destroy(id);
-     *  try {
-     *      assetManager.getHandle(id);
-     *      assert(false);
-     *  }
-     *  catch (const InvalidAssetIdError&) {
-     *      assert(true);
-     *  }
-     * @endcode
+     * ```cpp
+     *
+     * auto id = assetManager.create<Geometry>(myDataSource);
+     * assetManager.destroy(id);
+     * try {
+     *     assetManager.getHandle(id);
+     *     assert(false);
+     * }
+     * catch (const InvalidAssetIdError&) {
+     *     assert(true);
+     * }
+     * ```
      */
     class InvalidAssetIdError : public Exception
     {

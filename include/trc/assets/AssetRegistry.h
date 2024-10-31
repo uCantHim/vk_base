@@ -111,6 +111,11 @@ namespace trc
         requires std::derived_from<AssetRegistryModule<T>, AssetRegistryModuleInterface<T>>
     inline void AssetRegistry::addModule(u_ptr<AssetRegistryModule<T>> assetModuleImpl)
     {
+        // Initialize module
+        assetModuleImpl->parent = this;
+        assetModuleImpl->init(*this);
+
+        // Store module
         modules.addModule<T>(std::move(assetModuleImpl));
     }
 

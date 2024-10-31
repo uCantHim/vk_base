@@ -19,7 +19,7 @@ AssetPath::AssetPath(util::Pathlet path)
     if (!isSubdir)
     {
         throw std::invalid_argument(
-            "Unable to construct unique asset path from \"" + path.string() + "\": "
+            "Unable to construct unique asset path from \"" + this->string() + "\": "
             "Path is not lexically relative to the logical asset root.");
     }
 }

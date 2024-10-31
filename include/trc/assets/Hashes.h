@@ -2,7 +2,7 @@
 
 #include <functional>
 
-#include "trc/assets/AssetID.h"
+#include "trc/assets/AssetManagerBase.h"  // For asset ID types
 #include "trc/assets/AssetReference.h"
 
 template<trc::AssetBaseType T>
