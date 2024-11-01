@@ -4,17 +4,21 @@
 #include "trc/AssetPlugin.h"
 #include "trc/GBuffer.h"
 #include "trc/RasterPlugin.h"
+#include "trc/ShaderLoader.h"
 #include "trc/base/Logging.h"
 #include "trc/material/FragmentShader.h"
+#include "trc/util/TorchDirectories.h"
 
 
 
 namespace trc
 {
 
-void addLightingRequirements(ShaderCapabilityConfig& config)
+using shader::CapabilityConfig;
+
+void addLightingRequirements(CapabilityConfig& config)
 {
-    using DescriptorBinding = ShaderCapabilityConfig::DescriptorBinding;
+    using DescriptorBinding = CapabilityConfig::DescriptorBinding;
     auto& builder = config.getCodeBuilder();
 
     auto shadowMatrixBufferResource = config.addResource(DescriptorBinding{
@@ -22,9 +26,6 @@ void addLightingRequirements(ShaderCapabilityConfig& config)
         .bindingIndex=0,
         .descriptorType="restrict readonly buffer",
         .descriptorName="ShadowMatrixBuffer",
-        .isArray=false,
-        .arrayCount=0,
-        .layoutQualifier=std::nullopt,
         .descriptorContent="mat4 shadowMatrices[];",
     });
     auto shadowMapsResource = config.addResource(DescriptorBinding{
@@ -32,10 +33,7 @@ void addLightingRequirements(ShaderCapabilityConfig& config)
         .bindingIndex=1,
         .descriptorType="uniform sampler2D",
         .descriptorName="shadowMaps",
-        .isArray=true,
         .arrayCount=0,
-        .layoutQualifier=std::nullopt,
-        .descriptorContent=std::nullopt,
     });
     config.addShaderExtension(shadowMapsResource, "GL_EXT_nonuniform_qualifier");
     config.linkCapability(
@@ -49,9 +47,6 @@ void addLightingRequirements(ShaderCapabilityConfig& config)
         .bindingIndex=0,
         .descriptorType="restrict readonly buffer",
         .descriptorName="LightBuffer",
-        .isArray=false,
-        .arrayCount=0,
-        .layoutQualifier=std::nullopt,
         .descriptorContent=
             "uint numSunLights;"
             "uint numPointLights;"
@@ -62,28 +57,25 @@ void addLightingRequirements(ShaderCapabilityConfig& config)
     config.linkCapability(FragmentCapability::kLightBuffer, lightBufferResource);
 }
 
-void addTextureSampleRequirements(ShaderCapabilityConfig& config)
+void addTextureSampleRequirements(CapabilityConfig& config)
 {
-    auto textureResource = config.addResource(ShaderCapabilityConfig::DescriptorBinding{
+    auto textureResource = config.addResource(CapabilityConfig::DescriptorBinding{
         .setName=AssetPlugin::ASSET_DESCRIPTOR,
         .bindingIndex=AssetDescriptor::getBindingIndex(AssetDescriptorBinding::eTextureSamplers),
         .descriptorType="uniform sampler2D",
         .descriptorName="textures",
-        .isArray=true,
         .arrayCount=0,
-        .layoutQualifier=std::nullopt,
-        .descriptorContent=std::nullopt,
     });
     config.addShaderExtension(textureResource, "GL_EXT_nonuniform_qualifier");
     config.linkCapability(MaterialCapability::kTextureSample, textureResource);
 }
 
-auto makeFragmentCapabilityConfig() -> ShaderCapabilityConfig
+auto makeFragmentCapabilityConfig() -> CapabilityConfig
 {
-    using ShaderInput = ShaderCapabilityConfig::ShaderInput;
-    using DescriptorBinding = ShaderCapabilityConfig::DescriptorBinding;
+    using ShaderInput = CapabilityConfig::ShaderInput;
+    using DescriptorBinding = CapabilityConfig::DescriptorBinding;
 
-    ShaderCapabilityConfig config;
+    CapabilityConfig config;
     auto& code = config.getCodeBuilder();
 
     addTextureSampleRequirements(config);
@@ -94,18 +86,13 @@ auto makeFragmentCapabilityConfig() -> ShaderCapabilityConfig
         .bindingIndex=GBufferDescriptor::getBindingIndex(GBufferDescriptorBinding::eTpFragHeadPointerImage),
         .descriptorType="uniform uimage2D",
         .descriptorName="fragmentListHeadPointer",
-        .isArray=false,
-        .arrayCount=0,
         .layoutQualifier="r32ui",
-        .descriptorContent=std::nullopt,
     });
     auto fragListAllocResource = config.addResource(DescriptorBinding{
         .setName=RasterPlugin::G_BUFFER_DESCRIPTOR,
         .bindingIndex=GBufferDescriptor::getBindingIndex(GBufferDescriptorBinding::eTpFragListEntryAllocator),
         .descriptorType="restrict buffer",
         .descriptorName="FragmentListAllocator",
-        .isArray=false,
-        .arrayCount=0,
         .layoutQualifier=std::nullopt,
         .descriptorContent=
             "uint nextFragmentListIndex;\n"
@@ -116,9 +103,6 @@ auto makeFragmentCapabilityConfig() -> ShaderCapabilityConfig
         .bindingIndex=GBufferDescriptor::getBindingIndex(GBufferDescriptorBinding::eTpFragListBuffer),
         .descriptorType="restrict buffer",
         .descriptorName="FragmentListBuffer",
-        .isArray=false,
-        .arrayCount=0,
-        .layoutQualifier=std::nullopt,
         .descriptorContent="uvec4 fragmentList[];",
     });
     config.linkCapability(
@@ -144,8 +128,6 @@ auto makeFragmentCapabilityConfig() -> ShaderCapabilityConfig
         .bindingIndex=0,
         .descriptorType="uniform",
         .descriptorName="camera",
-        .isArray=false,
-        .arrayCount=0,
         .layoutQualifier="std140",
         .descriptorContent=
             "mat4 viewMatrix;\n"
@@ -181,18 +163,18 @@ auto makeFragmentCapabilityConfig() -> ShaderCapabilityConfig
     return config;
 }
 
-auto makeRayHitCapabilityConfig() -> ShaderCapabilityConfig
+auto makeRayHitCapabilityConfig() -> CapabilityConfig
 {
     // ------------------------------------------------------------------------
     // Capabilities specific to the callable shader variant
     // ------------------------------------------------------------------------
 
-    using Descriptor = ShaderCapabilityConfig::DescriptorBinding;
-    using RayPayload = ShaderCapabilityConfig::RayPayload;
+    using Descriptor = CapabilityConfig::DescriptorBinding;
+    using RayPayload = CapabilityConfig::RayPayload;
 
     namespace cap = RayHitCapability;
 
-    ShaderCapabilityConfig config;
+    CapabilityConfig config;
     auto& builder = config.getCodeBuilder();
 
     // ------------------------------------------------------------------------
@@ -210,7 +192,6 @@ auto makeRayHitCapabilityConfig() -> ShaderCapabilityConfig
         .bindingIndex=1,
         .descriptorType="restrict readonly buffer",
         .descriptorName="DrawableDataBuffer",
-        .isArray=false,
         .layoutQualifier="std430",
         .descriptorContent="DrawableData drawables[];"
     });
@@ -222,7 +203,7 @@ auto makeRayHitCapabilityConfig() -> ShaderCapabilityConfig
         { drawableDataBuf }
     );
 
-    auto baryHitAttr = config.addResource(ShaderCapabilityConfig::HitAttribute{ vec2{} });
+    auto baryHitAttr = config.addResource(CapabilityConfig::HitAttribute{ vec2{} });
     auto baryX = builder.makeMemberAccess(config.accessResource(baryHitAttr), "x");
     auto baryY = builder.makeMemberAccess(config.accessResource(baryHitAttr), "y");
     config.linkCapability(RayHitCapability::kBarycentricCoords,
@@ -250,7 +231,6 @@ auto makeRayHitCapabilityConfig() -> ShaderCapabilityConfig
         .bindingIndex=AssetDescriptor::getBindingIndex(AssetDescriptorBinding::eGeometryIndexBuffers),
         .descriptorType="restrict readonly buffer",
         .descriptorName="GeometryIndexBuffers",
-        .isArray=true,
         .arrayCount=0,
         .layoutQualifier="std430",
         .descriptorContent="uint indices[];"
@@ -260,7 +240,6 @@ auto makeRayHitCapabilityConfig() -> ShaderCapabilityConfig
         .bindingIndex=AssetDescriptor::getBindingIndex(AssetDescriptorBinding::eGeometryVertexBuffers),
         .descriptorType="restrict readonly buffer",
         .descriptorName="GeometryVertexBuffers",
-        .isArray=true,
         .arrayCount=0,
         .layoutQualifier="std430",
         .descriptorContent="Vertex vertices[];"
@@ -315,15 +294,23 @@ auto makeRayHitCapabilityConfig() -> ShaderCapabilityConfig
     return config;
 }
 
-auto makeShaderDescriptorConfig() -> ShaderDescriptorConfig
+auto makeProgramLinkerSettings() -> shader::ShaderProgramLinkSettings
 {
-    return ShaderDescriptorConfig{
-        .descriptorInfos{
-            { RasterPlugin::GLOBAL_DATA_DESCRIPTOR, { 0, true } },
-            { AssetPlugin::ASSET_DESCRIPTOR,        { 1, true } },
-            { RasterPlugin::SCENE_DESCRIPTOR,       { 2, true } },
-            { RasterPlugin::G_BUFFER_DESCRIPTOR,    { 3, true } },
-            { RasterPlugin::SHADOW_DESCRIPTOR,      { 4, true } },
+    auto opts = std::make_unique<shaderc::CompileOptions>(ShaderLoader::makeDefaultOptions());
+    auto includer = std::make_unique<spirv::FileIncluder>(
+        util::getInternalShaderStorageDirectory(),
+        std::vector<fs::path>{ util::getInternalShaderBinaryDirectory() }
+    );
+    opts->SetIncluder(std::move(includer));
+
+    return shader::ShaderProgramLinkSettings{
+        .compileOptions{ std::move(opts) },
+        .preferredDescriptorSetIndices{
+            { RasterPlugin::GLOBAL_DATA_DESCRIPTOR, 0 },
+            { AssetPlugin::ASSET_DESCRIPTOR,        1 },
+            { RasterPlugin::SCENE_DESCRIPTOR,       2 },
+            { RasterPlugin::G_BUFFER_DESCRIPTOR,    3 },
+            { RasterPlugin::SHADOW_DESCRIPTOR,      4 },
         }
     };
 }
@@ -339,9 +326,17 @@ RuntimeTextureIndex::RuntimeTextureIndex(AssetReference<Texture> texture)
 
 auto RuntimeTextureIndex::loadData() -> std::vector<std::byte>
 {
-    assert(texture.hasResolvedID());
+    if (!texture.hasResolvedID())
+    {
+        throw std::runtime_error(
+            "[In RuntimeTextureIndex::loadData]: Unable to load specialization constant data:"
+            " Texture reference has not been registered at an asset manager."
+        );
+    }
 
-    runtimeHandle = texture.getID().getDeviceDataHandle();
+    if (!runtimeHandle) {
+        runtimeHandle = texture.getID().getDeviceDataHandle();
+    }
     const ui32 index = runtimeHandle->getDeviceIndex();
     return {
         reinterpret_cast<const std::byte*>(&index),
@@ -360,6 +355,23 @@ auto RuntimeTextureIndex::serialize() const -> std::string
     }
 
     return texture.getAssetPath().string();
+}
+
+auto RuntimeTextureIndex::getTextureReference() -> AssetReference<Texture>
+{
+    return texture;
+}
+
+auto RuntimeTextureIndex::deserialize(const std::string& data) -> s_ptr<RuntimeTextureIndex>
+{
+    try {
+        AssetReference<Texture> ref{ AssetPath{data} };
+        return std::make_shared<RuntimeTextureIndex>(ref);
+    }
+    catch (const std::invalid_argument&) {
+        // Happens if AssetPath constructor fails
+        return nullptr;
+    }
 }
 
 } // namespace trc

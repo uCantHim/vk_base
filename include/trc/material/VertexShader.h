@@ -1,31 +1,32 @@
 #pragma once
 
-#include "ShaderCapabilities.h"
-#include "ShaderModuleBuilder.h"
-#include "ShaderModuleCompiler.h"
-#include "ShaderResourceInterface.h"
+#include "trc/material/shader/Capability.h"
+#include "trc/material/shader/ShaderModuleBuilder.h"
+#include "trc/material/shader/ShaderModuleCompiler.h"
 
 namespace trc
 {
-    struct VertexCapability
+    namespace code = shader::code;
+
+    namespace VertexCapability
     {
-        static constexpr Capability kPosition{ "vert_vertexPosition" };
-        static constexpr Capability kNormal{ "vert_vertexNormal" };
-        static constexpr Capability kTangent{ "vert_vertexTangent" };
-        static constexpr Capability kUV{ "vert_vertexUV" };
+        constexpr shader::Capability kPosition{ "vert_vertexPosition" };
+        constexpr shader::Capability kNormal{ "vert_vertexNormal" };
+        constexpr shader::Capability kTangent{ "vert_vertexTangent" };
+        constexpr shader::Capability kUV{ "vert_vertexUV" };
 
-        static constexpr Capability kBoneIndices{ "vert_boneIndices" };
-        static constexpr Capability kBoneWeights{ "vert_boneWeights" };
+        constexpr shader::Capability kBoneIndices{ "vert_boneIndices" };
+        constexpr shader::Capability kBoneWeights{ "vert_boneWeights" };
 
-        static constexpr Capability kModelMatrix{ "vert_modelMatrix" };
-        static constexpr Capability kViewMatrix{ "vert_viewMatrix" };
-        static constexpr Capability kProjMatrix{ "vert_projMatrix" };
+        constexpr shader::Capability kModelMatrix{ "vert_modelMatrix" };
+        constexpr shader::Capability kViewMatrix{ "vert_viewMatrix" };
+        constexpr shader::Capability kProjMatrix{ "vert_projMatrix" };
 
-        static constexpr Capability kAnimIndex{ "vert_animIndex" };
-        static constexpr Capability kAnimKeyframes{ "vert_animKeyframes" };
-        static constexpr Capability kAnimFrameWeight{ "vert_animFrameWeight" };
-        static constexpr Capability kAnimMetaBuffer{ "vert_animMetaBuffer" };
-        static constexpr Capability kAnimDataBuffer{ "vert_animDataBuffer" };
+        constexpr shader::Capability kAnimIndex{ "vert_animIndex" };
+        constexpr shader::Capability kAnimKeyframes{ "vert_animKeyframes" };
+        constexpr shader::Capability kAnimFrameWeight{ "vert_animFrameWeight" };
+        constexpr shader::Capability kAnimMetaBuffer{ "vert_animMetaBuffer" };
+        constexpr shader::Capability kAnimDataBuffer{ "vert_animDataBuffer" };
     };
 
     enum DrawablePushConstIndex : ui32
@@ -40,13 +41,13 @@ namespace trc
     public:
         explicit VertexModule(bool animated);
 
-        auto build(const ShaderModule& fragment) && -> ShaderModule;
+        auto build(const shader::ShaderModule& fragment) && -> shader::ShaderModule;
 
     private:
-        static auto makeVertexCapabilityConfig() -> ShaderCapabilityConfig;
+        static auto makeVertexCapabilityConfig() -> shader::CapabilityConfig;
 
-        ShaderModuleBuilder builder;
+        shader::ShaderModuleBuilder builder;
 
-        std::unordered_map<Capability, code::Value> fragmentInputProviders;
+        std::unordered_map<shader::Capability, code::Value> fragmentInputProviders;
     };
 } // namespace trc

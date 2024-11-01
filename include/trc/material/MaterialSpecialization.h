@@ -1,13 +1,9 @@
 #pragma once
 
 #include <functional>
-#include <unordered_map>
-#include <vector>
 
-#include "MaterialRuntime.h"
-#include "MaterialShaderProgram.h"
 #include "trc/FlagCombination.h"
-#include "trc/Types.h"
+#include "trc/material/shader/ShaderModuleCompiler.h"
 
 namespace trc
 {
@@ -17,7 +13,7 @@ namespace trc
      */
     struct MaterialBaseInfo
     {
-        ShaderModule fragmentModule;
+        shader::ShaderModule fragmentModule;
         bool transparent;
     };
 
@@ -68,4 +64,4 @@ namespace trc
 } // namespace trc
 
 template<>
-struct std::hash<trc::MaterialKey> : trc::MaterialKey::Hash {};
+struct std::hash<::trc::MaterialKey> : ::trc::MaterialKey::Hash {};

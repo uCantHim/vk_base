@@ -1,6 +1,5 @@
 #pragma once
 
-#include <concepts>
 #include <iostream>
 #include <optional>
 #include <unordered_map>
@@ -15,8 +14,9 @@
 #include "trc/assets/AssetRegistryModule.h"
 #include "trc/assets/AssetSource.h"
 #include "trc/assets/TextureRegistry.h"
-#include "trc/base/Buffer.h"
+#include "trc/material/MaterialProgram.h"
 #include "trc/material/MaterialSpecialization.h"
+#include "trc/material/shader/ShaderProgram.h"
 
 namespace trc
 {
@@ -32,12 +32,12 @@ namespace trc
     };
 
     template<>
-    struct AssetData<Material> : public ShaderRuntimeConstantDeserializer
+    struct AssetData<Material> : public shader::ShaderRuntimeConstantDeserializer
     {
         AssetData() = default;
-        AssetData(const ShaderModule& fragModule, bool transparent);
+        AssetData(const shader::ShaderModule& fragModule, bool transparent);
 
-        std::unordered_map<MaterialKey, MaterialProgramData> programs;
+        std::unordered_map<MaterialKey, shader::ShaderProgramData> programs;
 
         /**
          * Default values for runtime parameters to the material's shader
@@ -63,7 +63,7 @@ namespace trc
 
     private:
         auto deserialize(const std::string& data)
-            -> std::optional<s_ptr<ShaderRuntimeConstant>> override;
+            -> std::optional<s_ptr<shader::ShaderRuntimeConstant>> override;
 
         std::vector<AssetReference<Texture>> textures;
     };
@@ -80,7 +80,7 @@ namespace trc
      */
     auto makeMaterialProgram(const MaterialData& data,
                              const MaterialSpecializationInfo& specialization)
-        -> u_ptr<MaterialShaderProgram>;
+        -> u_ptr<MaterialProgram>;
 
     class MaterialRegistry : public AssetRegistryModuleInterface<Material>
     {
@@ -113,8 +113,8 @@ namespace trc
                 = MaterialKey::MaterialSpecializationFlags::size();
 
             MaterialData data;
-            std::array<u_ptr<const MaterialShaderProgram>, kNumSpecializations> shaderPrograms;
-            std::array<std::optional<MaterialRuntime>, kNumSpecializations> runtimes;
+            std::array<u_ptr<const MaterialProgram>, kNumSpecializations> shaderPrograms;
+            std::array<u_ptr<MaterialRuntime>, kNumSpecializations> runtimes;
         };
 
         data::IdPool<ui64> localIdPool;

@@ -1,7 +1,6 @@
 #include "trc/drawable/DefaultDrawable.h"
 
 #include "trc/DrawablePipelines.h"
-#include "trc/material/MaterialRuntime.h"
 #include "trc/material/VertexShader.h" // For the DrawablePushConstIndex enum
 
 
@@ -47,7 +46,7 @@ auto makeGBufferDrawFunction(s_ptr<DrawableRasterDrawInfo> drawInfo) -> Drawable
                 drawInfo->anim.get()
             );
         }
-        material.uploadPushConstantData(cmdBuf, layout);
+        material.uploadPushConstantDefaultValues(cmdBuf, layout);
 
         drawInfo->geo.bindVertices(cmdBuf, 0);
         cmdBuf.drawIndexed(drawInfo->geo.getIndexCount(), 1, 0, 0, 0);

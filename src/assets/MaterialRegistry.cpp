@@ -10,22 +10,39 @@
 
 
 trc::AssetData<trc::Material>::AssetData(
-    const ShaderModule& fragModule,
+    const shader::ShaderModule& fragModule,
     bool transparent)
     :
     transparent(transparent)
 {
     auto specialize = [this, &fragModule](const MaterialSpecializationInfo& info)
     {
-        ShaderModule vertexModule = VertexModule{ info.animated }.build(fragModule);
-
-        programs[MaterialKey{ info }] = linkMaterialProgram(
-            {
-                { vk::ShaderStageFlagBits::eVertex,   std::move(vertexModule) },
-                { vk::ShaderStageFlagBits::eFragment, fragModule },
-            },
-            makeShaderDescriptorConfig()
+        auto vertexModule = VertexModule{ info.animated }.build(fragModule);
+        auto [it, _] = programs.try_emplace(
+            MaterialKey{ info },
+            shader::linkShaderProgram(
+                {
+                    { vk::ShaderStageFlagBits::eVertex,   std::move(vertexModule) },
+                    { vk::ShaderStageFlagBits::eFragment, fragModule },
+                },
+                makeProgramLinkerSettings()
+            )
         );
+
+        // Collect references to textures so we can resolve them at the asset
+        // manager when a material is created from this data.
+        for (auto& [stage, specConstants] : it->second.specConstants)
+        {
+            for (auto& [_, spec] : specConstants)
+            {
+                auto texture = std::dynamic_pointer_cast<RuntimeTextureIndex>(spec);
+                if (!texture) {
+                    throw std::runtime_error("Only texture references are allowed as"
+                                             " specialization constants.");
+                }
+                textures.emplace_back(texture->getTextureReference());
+            }
+        }
     };
 
     specialize({ .animated=false });
@@ -100,7 +117,7 @@ void trc::AssetData<trc::Material>::deserialize(std::istream& is)
     programs.clear();
     for (const auto& spec : mat.specializations())
     {
-        MaterialProgramData program;
+        shader::ShaderProgramData program;
         program.deserialize(spec.shader_program(), *this);
         programs.try_emplace(
             MaterialSpecializationInfo{ .animated=spec.animated() },
@@ -123,18 +140,15 @@ void trc::AssetData<trc::Material>::deserialize(std::istream& is)
 }
 
 auto trc::AssetData<trc::Material>::deserialize(const std::string& data)
-    -> std::optional<s_ptr<ShaderRuntimeConstant>>
+    -> std::optional<s_ptr<shader::ShaderRuntimeConstant>>
 {
-    try {
-        // For now, we only have texture references as runtime constants.
-        AssetReference<Texture> ref{ AssetPath(data) };
-        textures.emplace_back(ref);
-        return std::make_shared<RuntimeTextureIndex>(ref);
+    // For now, we only have texture references as runtime constants.
+    if (auto val = RuntimeTextureIndex::deserialize(data))
+    {
+        textures.emplace_back(val->getTextureReference());
+        return val;
     }
-    catch (const std::invalid_argument&) {
-        // Happens if AssetPath constructor fails
-        return std::nullopt;
-    }
+    return std::nullopt;
 }
 
 void trc::AssetData<trc::Material>::resolveReferences(AssetManager& assetManager)
@@ -142,7 +156,6 @@ void trc::AssetData<trc::Material>::resolveReferences(AssetManager& assetManager
     for (auto& ref : textures) {
         ref.resolve(assetManager);
     }
-    textures.clear();
 }
 
 
@@ -150,7 +163,7 @@ void trc::AssetData<trc::Material>::resolveReferences(AssetManager& assetManager
 auto trc::makeMaterialProgram(
     const MaterialData& data,
     const MaterialSpecializationInfo& specialization)
-    -> u_ptr<MaterialShaderProgram>
+    -> u_ptr<MaterialProgram>
 {
     const MaterialKey key{ specialization };
 
@@ -179,7 +192,7 @@ auto trc::makeMaterialProgram(
     }
 
     // Create the runtime program
-    return std::make_unique<MaterialShaderProgram>(
+    return std::make_unique<MaterialProgram>(
         data.programs.at(key),
         pipelineData,
         renderPass
@@ -233,7 +246,7 @@ auto trc::MaterialRegistry::SpecializationStorage::getSpecialization(const Mater
                 .animated=key.flags.has(MaterialKey::Flags::Animated::eTrue)
             }
         );
-        runtime = prog->makeRuntime();
+        runtime = prog->cloneRuntime();
         for (const auto& [id, data] : data.runtimeValueDefaults) {
             runtime->setPushConstantDefaultValue(id, std::span{data});
         }

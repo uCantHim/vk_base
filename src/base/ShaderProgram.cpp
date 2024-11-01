@@ -55,7 +55,7 @@ void trc::ShaderProgram::addStage(
     std::vector<uint32_t> shaderCode,
     vk::SpecializationInfo specializationInfo)
 {
-    addStage(type, shaderCode);
+    addStage(type, std::move(shaderCode));
 
     // Set the specialization info on the newly created stage
     vk::SpecializationInfo* specInfo = specInfos.emplace_back(

@@ -1,5 +1,7 @@
 #include "trc/material/FragmentShader.h"
 
+#include "trc/material/shader/ShaderOutputInterface.h"
+
 
 
 namespace trc
@@ -28,11 +30,11 @@ void FragmentModule::setParameter(Parameter param, code::Value value)
 }
 
 auto FragmentModule::build(
-    ShaderModuleBuilder builder,
+    shader::ShaderModuleBuilder builder,
     bool transparent,
-    const ShaderCapabilityConfig& capabilityConfig) -> ShaderModule
+    const shader::CapabilityConfig& capabilityConfig) -> shader::ShaderModule
 {
-    ShaderOutputInterface output;
+    shader::ShaderOutputInterface output;
 
     // Ensure that every required parameter exists and has a value
     fillDefaultValues(builder);
@@ -67,16 +69,16 @@ auto FragmentModule::build(
         storeOutput(Parameter::eEmissive, outMaterial);
     }
     else {
-        builder.includeCode(util::Pathlet("material_utils/append_fragment.glsl"), {
+        builder.includeCode("material_utils/append_fragment.glsl", {
             { "nextFragmentListIndex",   FragmentCapability::kNextFragmentListIndex },
             { "maxFragmentListIndex",    FragmentCapability::kMaxFragmentListIndex },
             { "fragmentListHeadPointer", FragmentCapability::kFragmentListHeadPointerImage },
             { "fragmentList",            FragmentCapability::kFragmentListBuffer },
         });
-        builder.includeCode(util::Pathlet("material_utils/shadow.glsl"), {
+        builder.includeCode("material_utils/shadow.glsl", {
             { "shadowMatrixBufferName", FragmentCapability::kShadowMatrices },
         });
-        builder.includeCode(util::Pathlet("material_utils/lighting.glsl"), {
+        builder.includeCode("material_utils/lighting.glsl", {
             { "lightBufferName", FragmentCapability::kLightBuffer },
         });
 
@@ -116,17 +118,18 @@ auto FragmentModule::build(
 
     builder.enableEarlyFragmentTest();
 
-    return ShaderModuleCompiler{}.compile(
+    return shader::ShaderModuleCompiler{}.compile(
         output,
         std::move(builder),
         capabilityConfig
     );
 }
 
-auto FragmentModule::buildClosesthitShader(ShaderModuleBuilder builder) -> ShaderModule
+auto FragmentModule::buildClosesthitShader(shader::ShaderModuleBuilder builder)
+    -> shader::ShaderModule
 {
     namespace cap = RayHitCapability;
-    ShaderOutputInterface out;
+    shader::ShaderOutputInterface out;
 
     fillDefaultValues(builder);
     out.makeStore(
@@ -152,7 +155,7 @@ auto FragmentModule::buildClosesthitShader(ShaderModuleBuilder builder) -> Shade
         )
     );
 
-    return ShaderModuleCompiler{}.compile(
+    return shader::ShaderModuleCompiler{}.compile(
         out,
         std::move(builder),
         makeRayHitCapabilityConfig()
@@ -172,9 +175,9 @@ auto FragmentModule::getParamValue(Parameter param) -> code::Value
     return parameters[index].value();
 }
 
-void FragmentModule::fillDefaultValues(ShaderModuleBuilder& builder)
+void FragmentModule::fillDefaultValues(shader::ShaderModuleBuilder& builder)
 {
-    auto tryFill = [&](Parameter param, Constant constant) {
+    auto tryFill = [&](Parameter param, shader::Constant constant) {
         const auto index = static_cast<size_t>(param);
         if (!parameters[index]) {
             parameters[index] = builder.makeConstant(constant);

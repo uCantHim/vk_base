@@ -1,0 +1,16 @@
+target_sources(
+    torch
+    PRIVATE
+        BasicType.cpp
+        CapabilityConfig.cpp
+        Constant.cpp
+        ShaderCodeBuilder.cpp
+        ShaderCodeCompiler.cpp
+        ShaderModuleBuilder.cpp
+        ShaderModuleCompiler.cpp
+        ShaderOutputInterface.cpp
+        ShaderProgram.cpp
+        ShaderResourceInterface.cpp
+        ShaderRuntime.cpp
+        ShaderTypeChecker.cpp
+)

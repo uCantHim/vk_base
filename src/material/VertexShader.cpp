@@ -3,15 +3,18 @@
 #include <initializer_list>
 #include <unordered_map>
 
-#include "trc/AnimationEngine.h"
 #include "trc/AssetDescriptor.h"
-#include "trc/base/Logging.h"
 #include "trc/material/FragmentShader.h"
 
 
 
 namespace trc
 {
+
+using shader::FunctionType;
+using shader::ShaderFunction;
+using shader::ShaderModuleCompiler;
+using shader::ShaderOutputInterface;
 
 class GlPosition : public ShaderFunction
 {
@@ -24,7 +27,7 @@ public:
         )
     {}
 
-    void build(ShaderModuleBuilder& builder, std::vector<code::Value> args) override
+    void build(shader::ShaderModuleBuilder& builder, const std::vector<code::Value>& args) override
     {
         auto viewproj = builder.makeMul(
             builder.makeCapabilityAccess(VertexCapability::kProjMatrix),
@@ -48,7 +51,7 @@ public:
         )
     {}
 
-    void build(ShaderModuleBuilder& builder, std::vector<code::Value> args) override
+    void build(shader::ShaderModuleBuilder& builder, const std::vector<code::Value>& args) override
     {
         auto anim = builder.makeCapabilityAccess(VertexCapability::kAnimIndex);
         auto keyframes = builder.makeCapabilityAccess(VertexCapability::kAnimKeyframes);
@@ -66,7 +69,7 @@ public:
         ShaderFunction("normalToWorldspace", FunctionType{ { vec4{} }, vec3{} })
     {}
 
-    void build(ShaderModuleBuilder& builder, std::vector<code::Value> args) override
+    void build(shader::ShaderModuleBuilder& builder, const std::vector<code::Value>& args) override
     {
         auto model = builder.makeCapabilityAccess(VertexCapability::kModelMatrix);
         auto tiModel = builder.makeExternalCall(
@@ -113,7 +116,7 @@ VertexModule::VertexModule(bool animated)
                 auto objPos4 = builder.makeConstructor<vec4>(objPos, builder.makeConstant(1.0f));
                 if (animated)
                 {
-                    builder.includeCode(util::Pathlet("material_utils/animation.glsl"), {
+                    builder.includeCode("material_utils/animation.glsl", {
                         { "animationMetaDataDescriptorName", VertexCapability::kAnimMetaBuffer },
                         { "animationDataDescriptorName", VertexCapability::kAnimDataBuffer },
                         { "vertexBoneIndicesAttribName", VertexCapability::kBoneIndices },
@@ -132,7 +135,7 @@ VertexModule::VertexModule(bool animated)
     };
 }
 
-auto VertexModule::build(const ShaderModule& fragment) && -> ShaderModule
+auto VertexModule::build(const shader::ShaderModule& fragment) && -> shader::ShaderModule
 {
     ShaderOutputInterface shaderOutput;
     for (const auto& out : fragment.getRequiredShaderInputs())
@@ -146,7 +149,7 @@ auto VertexModule::build(const ShaderModule& fragment) && -> ShaderModule
         catch (const std::out_of_range&)
         {
             log::warn << "Warning: [In VertexShaderBuilder::buildVertexShader]: Fragment"
-                      << " capability \"" << out.capability.getString()
+                      << " capability \"" << out.capability.toString()
                       << "\" is requested as an output but not implemented.\n";
         }
     }
@@ -166,21 +169,21 @@ auto VertexModule::build(const ShaderModule& fragment) && -> ShaderModule
     );
 }
 
-auto VertexModule::makeVertexCapabilityConfig() -> ShaderCapabilityConfig
+auto VertexModule::makeVertexCapabilityConfig() -> shader::CapabilityConfig
 {
+    using shader::CapabilityConfig;
+
     static auto config = []{
-        ShaderCapabilityConfig config;
+        CapabilityConfig config;
         auto& code = config.getCodeBuilder();
 
         config.addGlobalShaderExtension("GL_GOOGLE_include_directive");
 
-        auto cameraMatrices = config.addResource(ShaderCapabilityConfig::DescriptorBinding{
+        auto cameraMatrices = config.addResource(CapabilityConfig::DescriptorBinding{
             .setName="global_data",
             .bindingIndex=0,
             .descriptorType="uniform",
             .descriptorName="camera",
-            .isArray=false,
-            .arrayCount=0,
             .layoutQualifier="std140",
             .descriptorContent=
                 "mat4 viewMatrix;\n"
@@ -189,10 +192,10 @@ auto VertexModule::makeVertexCapabilityConfig() -> ShaderCapabilityConfig
                 "mat4 inverseProjMatrix;\n"
         });
 
-        auto modelPc = config.addResource(ShaderCapabilityConfig::PushConstant{
+        auto modelPc = config.addResource(CapabilityConfig::PushConstant{
             mat4{}, DrawablePushConstIndex::eModelMatrix
         });
-        auto animDataPc = config.addResource(ShaderCapabilityConfig::PushConstant{
+        auto animDataPc = config.addResource(CapabilityConfig::PushConstant{
             code.makeStructType("AnimationPushConstantData", {
                 { uint{}, "animation" },
                 { uvec2{}, "keyframes" },
@@ -202,23 +205,19 @@ auto VertexModule::makeVertexCapabilityConfig() -> ShaderCapabilityConfig
         });
         config.addShaderInclude(animDataPc, util::Pathlet("material_utils/animation_data.glsl"));
 
-        auto animMeta = config.addResource(ShaderCapabilityConfig::DescriptorBinding{
+        auto animMeta = config.addResource(CapabilityConfig::DescriptorBinding{
             .setName="asset_registry",
             .bindingIndex=AssetDescriptor::getBindingIndex(AssetDescriptorBinding::eAnimationMetadata),
             .descriptorType="restrict readonly buffer",
             .descriptorName="AnimationMetaDataDescriptor",
-            .isArray=false,
-            .arrayCount=0,
             .layoutQualifier="std430",
             .descriptorContent="AnimationMetaData metas[];"
         });
-        auto animBuffer = config.addResource(ShaderCapabilityConfig::DescriptorBinding{
+        auto animBuffer = config.addResource(CapabilityConfig::DescriptorBinding{
             .setName="asset_registry",
             .bindingIndex=AssetDescriptor::getBindingIndex(AssetDescriptorBinding::eAnimationData),
             .descriptorType="restrict readonly buffer",
             .descriptorName="AnimationDataDescriptor",
-            .isArray=false,
-            .arrayCount=0,
             .layoutQualifier="std140",
             .descriptorContent="mat4 boneMatrices[];"
         });
@@ -226,12 +225,12 @@ auto VertexModule::makeVertexCapabilityConfig() -> ShaderCapabilityConfig
         config.linkCapability(VertexCapability::kAnimMetaBuffer, animMeta);
         config.linkCapability(VertexCapability::kAnimDataBuffer, animBuffer);
 
-        auto vPos     = config.addResource(ShaderCapabilityConfig::ShaderInput{ vec3{}, 0 });
-        auto vNormal  = config.addResource(ShaderCapabilityConfig::ShaderInput{ vec3{}, 1 });
-        auto vUV      = config.addResource(ShaderCapabilityConfig::ShaderInput{ vec2{}, 2 });
-        auto vTangent = config.addResource(ShaderCapabilityConfig::ShaderInput{ vec3{}, 3 });
-        auto vBoneIndices = config.addResource(ShaderCapabilityConfig::ShaderInput{ uvec4{}, 4 });
-        auto vBoneWeights = config.addResource(ShaderCapabilityConfig::ShaderInput{ vec4{}, 5 });
+        auto vPos     = config.addResource(CapabilityConfig::ShaderInput{ vec3{}, 0 });
+        auto vNormal  = config.addResource(CapabilityConfig::ShaderInput{ vec3{}, 1 });
+        auto vUV      = config.addResource(CapabilityConfig::ShaderInput{ vec2{}, 2 });
+        auto vTangent = config.addResource(CapabilityConfig::ShaderInput{ vec3{}, 3 });
+        auto vBoneIndices = config.addResource(CapabilityConfig::ShaderInput{ uvec4{}, 4 });
+        auto vBoneWeights = config.addResource(CapabilityConfig::ShaderInput{ vec4{}, 5 });
 
         config.linkCapability(VertexCapability::kPosition, vPos);
         config.linkCapability(VertexCapability::kNormal, vNormal);

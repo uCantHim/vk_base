@@ -1,27 +1,32 @@
 #pragma once
 
-#include "trc/material/ShaderCapabilities.h"
-#include "trc/material/ShaderModuleBuilder.h"
-#include "trc/material/ShaderModuleCompiler.h"
+#include <array>
+#include <optional>
+
+#include "trc/material/shader/Capability.h"
+#include "trc/material/shader/ShaderModuleBuilder.h"
+#include "trc/material/shader/ShaderModuleCompiler.h"
 #include "trc/material/TorchMaterialSettings.h"
 
 namespace trc
 {
+    namespace code = shader::code;
+
     /**
      * A collection of capabilities intended to be used by shader code
      * implementing material calculations: 'user code' if you will.
      */
     namespace MaterialCapability
     {
-        constexpr Capability kVertexWorldPos{ "trc_mat_vertexWorldPos" };
-        constexpr Capability kVertexNormal{ "trc_mat_vertexNormal" };
-        constexpr Capability kVertexUV{ "trc_mat_vertexUV" };
-        constexpr Capability kTangentToWorldSpaceMatrix{ "trc_mat_tangentToWorld" };
+        constexpr shader::Capability kVertexWorldPos{ "trc_mat_vertexWorldPos" };
+        constexpr shader::Capability kVertexNormal{ "trc_mat_vertexNormal" };
+        constexpr shader::Capability kVertexUV{ "trc_mat_vertexUV" };
+        constexpr shader::Capability kTangentToWorldSpaceMatrix{ "trc_mat_tangentToWorld" };
 
-        constexpr Capability kCameraWorldPos{ "trc_mat_cameraWorldPos" };
+        constexpr shader::Capability kCameraWorldPos{ "trc_mat_cameraWorldPos" };
 
-        constexpr Capability kTime{ "trc_mat_currentTime" };
-        constexpr Capability kTimeDelta{ "trc_mat_frameTime" };
+        constexpr shader::Capability kTime{ "trc_mat_currentTime" };
+        constexpr shader::Capability kTimeDelta{ "trc_mat_frameTime" };
 
         /**
          * Gives access to an array of texture samplers. The array shall be
@@ -29,7 +34,7 @@ namespace trc
          *
          * Use the `TextureSample` shader function as a default implementation.
          */
-        constexpr Capability kTextureSample{ "trc_mat_textureSample" };
+        constexpr shader::Capability kTextureSample{ "trc_mat_textureSample" };
     } // namespace MaterialCapability
 
     /**
@@ -38,12 +43,12 @@ namespace trc
      */
     namespace FragmentCapability
     {
-        constexpr Capability kNextFragmentListIndex{ "frag_allocFragListIndex" };
-        constexpr Capability kMaxFragmentListIndex{ "frag_maxFragListIndex" };
-        constexpr Capability kFragmentListHeadPointerImage{ "frag_fragListPointerImage" };
-        constexpr Capability kFragmentListBuffer{ "frag_fragListBuffer" };
-        constexpr Capability kShadowMatrices{ "frag_shadowMatrixBuffer" };
-        constexpr Capability kLightBuffer{ "frag_lightDataBuffer" };
+        constexpr shader::Capability kNextFragmentListIndex{ "frag_allocFragListIndex" };
+        constexpr shader::Capability kMaxFragmentListIndex{ "frag_maxFragListIndex" };
+        constexpr shader::Capability kFragmentListHeadPointerImage{ "frag_fragListPointerImage" };
+        constexpr shader::Capability kFragmentListBuffer{ "frag_fragListBuffer" };
+        constexpr shader::Capability kShadowMatrices{ "frag_shadowMatrixBuffer" };
+        constexpr shader::Capability kLightBuffer{ "frag_lightDataBuffer" };
     } // namespace FragmentCapability
 
     /**
@@ -52,10 +57,10 @@ namespace trc
      */
     namespace RayHitCapability
     {
-        constexpr Capability kBarycentricCoords{ "rcall_baryCoords" };
-        constexpr Capability kGeometryIndex{ "rcall_geoIndex" };
+        constexpr shader::Capability kBarycentricCoords{ "rcall_baryCoords" };
+        constexpr shader::Capability kGeometryIndex{ "rcall_geoIndex" };
 
-        constexpr Capability kOutColor{ "rcall_colorOutput" };
+        constexpr shader::Capability kOutColor{ "rcall_colorOutput" };
     } // namespace RayHitCapability
 
     /**
@@ -126,10 +131,10 @@ namespace trc
          * @throw std::invalid_argument if a required parameter has not been set
          *                              beforehand.
          */
-        auto build(ShaderModuleBuilder moduleCode,
+        auto build(shader::ShaderModuleBuilder moduleCode,
                    bool transparent,
-                   const ShaderCapabilityConfig& config = makeFragmentCapabilityConfig())
-            -> ShaderModule;
+                   const shader::CapabilityConfig& config = makeFragmentCapabilityConfig())
+            -> shader::ShaderModule;
 
         /**
          * @brief Compile the module description to a closest-hit shader module
@@ -138,13 +143,13 @@ namespace trc
          *        the shader code used in `FragmentModule::setParameter` was
          *        generated.
          */
-        auto buildClosesthitShader(ShaderModuleBuilder builder) -> ShaderModule;
+        auto buildClosesthitShader(shader::ShaderModuleBuilder builder) -> shader::ShaderModule;
 
     private:
         /** @throw std::invalid_argument */
         auto getParamValue(Parameter param) -> code::Value;
 
-        void fillDefaultValues(ShaderModuleBuilder& builder);
+        void fillDefaultValues(shader::ShaderModuleBuilder& builder);
 
         std::array<std::optional<code::Value>, kNumParams> parameters;
     };

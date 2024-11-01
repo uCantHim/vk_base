@@ -1,9 +1,9 @@
 #include <string>
 
 #include <gtest/gtest.h>
-#include <trc/material/BasicType.h>
+#include <trc/material/shader/BasicType.h>
 
-using trc::BasicType;
+using trc::shader::BasicType;
 
 TEST(TestBasicType, ConstructorFromType)
 {

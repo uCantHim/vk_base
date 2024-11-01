@@ -1,14 +1,10 @@
 #include "trc/assets/SimpleMaterial.h"
 
-#include "trc/assets/AssetSource.h"
-#include "trc/AssetPlugin.h"
 #include "trc/assets/import/InternalFormat.h"
-#include "trc/base/Logging.h"
-#include "trc/material/CommonShaderFunctions.h"
 #include "trc/material/FragmentShader.h"
+#include "trc/material/ShaderFunctions.h"
 #include "trc/material/TorchMaterialSettings.h"
 #include "trc/material/VertexShader.h"
-#include "trc/ray_tracing/RayPipelineBuilder.h"
 
 
 
@@ -44,7 +40,7 @@ auto makeMaterial(const SimpleMaterialData& data) -> MaterialData
 {
     constexpr auto kCapCurrentMat = "simplemat_param_obj";
 
-    ShaderModuleBuilder builder;
+    shader::ShaderModuleBuilder builder;
     auto capabilities = makeFragmentCapabilityConfig();
 
     // Declare the material data struct as a push constant
@@ -60,7 +56,7 @@ auto makeMaterial(const SimpleMaterialData& data) -> MaterialData
             { bool{},  "emissive" },
         }
     );
-    auto pc = capabilities.addResource(ShaderCapabilityConfig::PushConstant{
+    auto pc = capabilities.addResource(shader::CapabilityConfig::PushConstant{
         pcStructType,
         DrawablePushConstIndex::eMaterialData,
     });

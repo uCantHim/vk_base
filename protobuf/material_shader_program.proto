@@ -48,7 +48,7 @@ message ShaderProgram
     message Descriptor
     {
         string name = 1;
-        bool is_static = 2;
+        uint32 index = 2;
     }
 
     repeated ShaderModule shader_modules = 1;

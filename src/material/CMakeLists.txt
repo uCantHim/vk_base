@@ -1,20 +1,10 @@
+add_subdirectory(shader)
+
 target_sources(
     torch
     PRIVATE
-        BasicType.cpp
-        CommonShaderFunctions.cpp
-        Constant.cpp
         FragmentShader.cpp
-        MaterialRuntime.cpp
-        MaterialShaderProgram.cpp
-        ShaderCapabilityConfig.cpp
-        ShaderCodeBuilder.cpp
-        ShaderCodeCompiler.cpp
-        ShaderModuleBuilder.cpp
-        ShaderModuleCompiler.cpp
-        ShaderOutputInterface.cpp
-        ShaderResourceInterface.cpp
-        ShaderTypeChecker.cpp
+        MaterialProgram.cpp
         TorchMaterialSettings.cpp
         VertexShader.cpp
 )

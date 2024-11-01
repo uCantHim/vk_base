@@ -1,10 +1,11 @@
 #include <gtest/gtest.h>
 
-#include <trc/material/ShaderCodeBuilder.h>
-#include <trc/material/ShaderCodePrimitives.h>
-#include <trc/material/ShaderTypeChecker.h>
+#include <trc/material/shader/CodePrimitives.h>
+#include <trc/material/shader/ShaderCodeBuilder.h>
+#include <trc/material/shader/ShaderTypeChecker.h>
 
 using namespace trc;
+using namespace trc::shader;
 
 class TestShaderCodeTypechecker : public testing::Test
 {
