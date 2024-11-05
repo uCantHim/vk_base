@@ -60,6 +60,8 @@ namespace trc
         auto getLayout() noexcept -> PipelineLayout&;
         auto getLayout() const noexcept -> const PipelineLayout&;
 
+        auto getBindPoint() const -> vk::PipelineBindPoint;
+
     private:
         PipelineLayout* layout;
         UniquePipelineHandleType pipelineStorage;

@@ -69,6 +69,11 @@ auto trc::Pipeline::getLayout() const noexcept -> const PipelineLayout&
     return *layout;
 }
 
+auto trc::Pipeline::getBindPoint() const -> vk::PipelineBindPoint
+{
+    return bindPoint;
+}
+
 
 
 auto trc::makeComputePipeline(
