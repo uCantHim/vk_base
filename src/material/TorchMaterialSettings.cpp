@@ -298,8 +298,10 @@ auto makeProgramLinkerSettings() -> shader::ShaderProgramLinkSettings
 {
     auto opts = std::make_unique<shaderc::CompileOptions>(ShaderLoader::makeDefaultOptions());
     auto includer = std::make_unique<spirv::FileIncluder>(
-        util::getInternalShaderStorageDirectory(),
-        std::vector<fs::path>{ util::getInternalShaderBinaryDirectory() }
+        std::vector<fs::path>{
+            util::getInternalShaderStorageDirectory(),
+            util::getInternalShaderBinaryDirectory(),
+        }
     );
     opts->SetIncluder(std::move(includer));
 

@@ -399,8 +399,7 @@ void PipelineDefinitionLanguage::compileSpirvShaders()
      * generated shader files first in the include order.
      */
     spirvOpts.SetIncluder(std::make_unique<spirv::FileIncluder>(
-        shaderOutputDir,
-        std::vector<fs::path>{ shaderInputDir }
+        std::vector<fs::path>{ shaderOutputDir, shaderInputDir }
     ));
     for (const auto& str : shaderCompileDefinitions)
     {

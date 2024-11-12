@@ -12,7 +12,6 @@
 #include "trc/Types.h"
 #include "trc/base/Logging.h"
 #include "trc/base/ShaderProgram.h"
-#include "trc/util/TorchDirectories.h"
 
 
 
@@ -54,10 +53,7 @@ ShaderLoader::ShaderLoader(
     }
     fs::create_directories(outDir);
 
-    compileOpts.SetIncluder(std::make_unique<spirv::FileIncluder>(
-        includePaths.front(),
-        std::vector<fs::path>{ includePaths.begin() + 1, includePaths.end() }
-    ));
+    compileOpts.SetIncluder(std::make_unique<spirv::FileIncluder>(includePaths));
 }
 
 auto ShaderLoader::makeDefaultOptions() -> shaderc::CompileOptions

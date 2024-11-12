@@ -1,5 +1,6 @@
 #include "trc/material/shader/ShaderModuleBuilder.h"
 
+#include <fstream>
 #include <ranges>
 
 #include <shader_tools/ShaderDocument.h>
@@ -137,7 +138,7 @@ auto ShaderModuleBuilder::compileIncludedCode(
                                      + std::string(include->content));
         }
 
-        std::ifstream file(include->source_name);
+        std::ifstream file{ include->source_name };
         includer.ReleaseInclude(include);
 
         shader_edit::ShaderDocument doc(file);

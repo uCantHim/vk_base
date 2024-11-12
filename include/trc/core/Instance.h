@@ -25,10 +25,10 @@ namespace trc
         bool enableRayTracing{ false };
 
         /** Additional device extensions to enable */
-        std::vector<const char*> deviceExtensions;
+        std::vector<const char*> deviceExtensions{};
 
         /** Additional device features to enable */
-        TypeErasedStructureChain deviceFeatures;
+        TypeErasedStructureChain deviceFeatures{};
     };
 
     /**

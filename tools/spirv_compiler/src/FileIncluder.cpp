@@ -1,5 +1,6 @@
 #include "spirv/FileIncluder.h"
 
+#include <fstream>
 #include <sstream>
 
 
@@ -7,16 +8,15 @@
 namespace spirv
 {
 
-FileIncluder::FileIncluder(const fs::path& _basePath, std::vector<fs::path> additionalPaths)
+FileIncluder::FileIncluder(std::vector<fs::path> _includePaths)
     :
-    includePaths(std::move(additionalPaths))
+    includePaths(std::move(_includePaths))
 {
-    if (_basePath.is_absolute()) {
-        includePaths.insert(includePaths.begin(), _basePath);
-    }
-    else {
-        includePaths.insert(includePaths.begin(), fs::current_path() / _basePath);
-    }
+}
+
+void FileIncluder::addIncludePath(fs::path path)
+{
+    includePaths.emplace_back(std::move(path));
 }
 
 auto FileIncluder::GetInclude(
@@ -62,7 +62,7 @@ auto FileIncluder::GetInclude(
         return it->second;
     }();
 
-    std::ifstream file(path);
+    std::ifstream file{ path };
     if (!file.is_open())
     {
         res->source_name = "";

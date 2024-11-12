@@ -4,27 +4,31 @@
 #include <cstring>
 
 #include <filesystem>
-#include <fstream>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
-namespace fs = std::filesystem;
 
 #include <shaderc/shaderc.hpp>
 
 namespace spirv
 {
+    namespace fs = std::filesystem;
+
     class FileIncluder : public shaderc::CompileOptions::IncluderInterface
     {
     public:
         /**
-         * @param fs::path basePath Primary include path
-         * @param std::vector<fs::path> additionalPaths An optional list of
-         *        additional include paths.
+         * @param std::vector<fs::path> includePaths A list of directories to
+         *                              search for included files.
          */
-        explicit FileIncluder(const fs::path& basePath, std::vector<fs::path> additionalPaths = {});
+        explicit FileIncluder(std::vector<fs::path> includePaths);
+
+        /**
+         * @brief Add a path to the list of include paths.
+         */
+        void addIncludePath(fs::path path);
 
         /** Handles shaderc_include_resolver_fn callbacks. */
         auto GetInclude(const char* requested_source,

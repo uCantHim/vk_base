@@ -38,10 +38,12 @@ auto ShaderModuleCompiler::compile(
     builder.endBlock();
 
     // Generate resource and function declarations
-    spirv::FileIncluder includer(
-        util::getInternalShaderBinaryDirectory(),
-        { util::getInternalShaderStorageDirectory() }
-    );
+    spirv::FileIncluder includer{
+        {
+            util::getInternalShaderBinaryDirectory(),
+            util::getInternalShaderStorageDirectory(),
+        }
+    };
     CapabilityConfigResourceResolver resolver{ caps, builder };
 
     const auto includedCode = builder.compileIncludedCode(includer, resolver);
