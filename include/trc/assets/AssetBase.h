@@ -1,8 +1,6 @@
 #pragma once
 
 #include <concepts>
-#include <istream>
-#include <ostream>
 #include <string_view>
 
 #include <trc_util/TypeUtils.h>
@@ -55,17 +53,11 @@ namespace trc
 
         // T must define a constexpr function `name` that returns a unique
         // string identifier for the asset type.
-        { T::name() } -> std::same_as<std::string_view>;
+        { T::name() } -> std::convertible_to<std::string_view>;
         T::name().length() > 0;  // Also requires that T::name is indeed constexpr
 
         // The template `AssetData<>` must be specialized for `T`.
         requires util::CompleteType<AssetData<T>>;
-        requires requires (AssetData<T> data, std::istream& is) {
-            { data.deserialize(is) } -> std::same_as<void>;
-        };
-        requires requires (const AssetData<T> data, std::ostream& os) {
-            { data.serialize(os) } -> std::same_as<void>;
-        };
     };
 
     template<AssetBaseType T>

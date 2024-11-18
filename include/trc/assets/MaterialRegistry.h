@@ -16,7 +16,6 @@
 #include "trc/assets/TextureRegistry.h"
 #include "trc/material/MaterialProgram.h"
 #include "trc/material/MaterialSpecialization.h"
-#include "trc/material/shader/ShaderProgram.h"
 
 namespace trc
 {
@@ -32,12 +31,17 @@ namespace trc
     };
 
     template<>
-    struct AssetData<Material> : public shader::ShaderRuntimeConstantDeserializer
+    struct AssetData<Material>
     {
-        AssetData() = default;
-        AssetData(const shader::ShaderModule& fragModule, bool transparent);
+        /**
+         * @brief Create a material
+         */
+        explicit AssetData(const MaterialBaseInfo& createInfo);
 
-        std::unordered_map<MaterialKey, shader::ShaderProgramData> programs;
+        /** Used internally during serialization. */
+        explicit AssetData(MaterialSpecializationCache specializations);
+
+        MaterialSpecializationCache shaderProgram;
 
         /**
          * Default values for runtime parameters to the material's shader
@@ -58,19 +62,33 @@ namespace trc
 
         void resolveReferences(AssetManager& man);
 
-        void serialize(std::ostream& os) const;
-        void deserialize(std::istream& is);
+        /**
+         * Implements all types of runtime constants that Torch defines.
+         */
+        struct RuntimeConstantDeserializer : public shader::ShaderRuntimeConstantDeserializer
+        {
+            auto deserialize(const std::string& data)
+                -> std::optional<s_ptr<shader::ShaderRuntimeConstant>> override;
 
-    private:
-        auto deserialize(const std::string& data)
-            -> std::optional<s_ptr<shader::ShaderRuntimeConstant>> override;
+            // The output. After calling `deserialize` an arbitrary number of
+            // times, this array will contain all texture references that were
+            // parsed, if any.
+            std::vector<AssetReference<Texture>> loadedTextures;
+        };
 
-        std::vector<AssetReference<Texture>> textures;
+        std::vector<AssetReference<Texture>> requiredTextures;
     };
 
     using MaterialHandle = AssetHandle<Material>;
     using MaterialData = AssetData<Material>;
     using MaterialID = TypedAssetID<Material>;
+
+    template<>
+    struct AssetSerializerTraits<Material>
+    {
+        static void serialize(const MaterialData& data, std::ostream& os);
+        static auto deserialize(std::istream& is) -> AssetParseResult<Material>;
+    };
 
     /**
      * @brief Specialize a material description to create a runtime program.
@@ -78,7 +96,7 @@ namespace trc
      * @param data           The material description.
      * @param specialization Specialization info.
      */
-    auto makeMaterialProgram(const MaterialData& data,
+    auto makeMaterialProgram(MaterialData& data,
                              const MaterialSpecializationInfo& specialization)
         -> u_ptr<MaterialProgram>;
 

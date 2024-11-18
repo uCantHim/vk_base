@@ -2,8 +2,6 @@
 
 #include "asset.pb.h"
 
-#include "trc/assets/Assets.h"
-
 
 
 namespace trc
@@ -27,8 +25,9 @@ auto AssetStorage::getMetadata(const AssetPath& path) -> std::optional<AssetMeta
 
 bool AssetStorage::remove(const AssetPath& path)
 {
-    return storage->remove(makeMetaPath(path))
-        && storage->remove(makeDataPath(path));
+    const bool res1 = storage->remove(makeMetaPath(path));
+    const bool res2 = storage->remove(makeDataPath(path));
+    return res1 && res2;
 }
 
 auto AssetStorage::makeMetaPath(const AssetPath& path) -> util::Pathlet
@@ -71,12 +70,12 @@ auto AssetStorage::deserializeMetadata(std::istream& is) -> AssetMetadata
 
 auto AssetStorage::begin() -> iterator
 {
-    return AssetIterator(storage->begin(), storage->end());
+    return { storage->begin(), storage->end() };
 }
 
 auto AssetStorage::end() -> iterator
 {
-    return AssetIterator(storage->end(), storage->end());
+    return { storage->end(), storage->end() };
 }
 
 

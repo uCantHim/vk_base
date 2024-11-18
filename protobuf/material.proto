@@ -22,6 +22,22 @@ message SimpleMaterial
     optional AssetReference normal_texture = 9;
 }
 
+message MaterialProgramSpecializations
+{
+    message Specialization
+    {
+        ShaderProgram shader_program = 1;
+        bool animated = 2;
+    }
+
+    // Specializations at their respective indices as defined by MaterialKey's
+    // MaterialSpecializationFlags structure.
+    // Currently, all specializations must be present, i.e., precomputed in
+    // order the be serialized. This is mostly because we cannot serialize
+    // shader modules right now.
+    repeated Specialization specializations = 1;
+}
+
 // The enum values/indices are the integer values of the corresponding
 // Vulkan flag bits
 enum PolygonMode
@@ -41,6 +57,7 @@ enum CullMode
 
 message Material
 {
+    // These are mostly settings for Vulkan pipelines.
     message Settings
     {
         bool transparent = 1;
@@ -57,12 +74,6 @@ message Material
         optional float depth_bias_slope_factor = 9;
     }
 
-    message Specialization
-    {
-        ShaderProgram shader_program = 1;
-        bool animated = 2;
-    }
-
     message RuntimeValueDefault
     {
         uint32 push_constant_id = 1;
@@ -70,6 +81,6 @@ message Material
     }
 
     Settings settings = 1;
-    repeated Specialization specializations = 2;
+    MaterialProgramSpecializations specializations = 2;
     repeated RuntimeValueDefault runtime_values = 3;
 }

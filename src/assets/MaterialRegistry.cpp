@@ -5,33 +5,19 @@
 #include "trc/assets/AssetManager.h"
 #include "trc/drawable/DefaultDrawable.h"
 #include "trc/material/TorchMaterialSettings.h"
-#include "trc/material/VertexShader.h"
 
 
 
-trc::AssetData<trc::Material>::AssetData(
-    const shader::ShaderModule& fragModule,
-    bool transparent)
+trc::AssetData<trc::Material>::AssetData(const MaterialBaseInfo& createInfo)
     :
-    transparent(transparent)
+    shaderProgram(createInfo),
+    transparent(createInfo.transparent)
 {
-    auto specialize = [this, &fragModule](const MaterialSpecializationInfo& info)
+    for (const auto& [_, program] : shaderProgram.iterSpecializations())
     {
-        auto vertexModule = VertexModule{ info.animated }.build(fragModule);
-        auto [it, _] = programs.try_emplace(
-            MaterialKey{ info },
-            shader::linkShaderProgram(
-                {
-                    { vk::ShaderStageFlagBits::eVertex,   std::move(vertexModule) },
-                    { vk::ShaderStageFlagBits::eFragment, fragModule },
-                },
-                makeProgramLinkerSettings()
-            )
-        );
-
         // Collect references to textures so we can resolve them at the asset
         // manager when a material is created from this data.
-        for (auto& [stage, specConstants] : it->second.specConstants)
+        for (auto& [stage, specConstants] : program.specConstants)
         {
             for (auto& [_, spec] : specConstants)
             {
@@ -40,29 +26,29 @@ trc::AssetData<trc::Material>::AssetData(
                     throw std::runtime_error("Only texture references are allowed as"
                                              " specialization constants.");
                 }
-                textures.emplace_back(texture->getTextureReference());
+                requiredTextures.emplace_back(texture->getTextureReference());
             }
         }
-    };
-
-    specialize({ .animated=false });
-    specialize({ .animated=true });
+    }
 }
 
-void trc::AssetData<trc::Material>::serialize(std::ostream& os) const
+trc::AssetData<trc::Material>::AssetData(MaterialSpecializationCache specializations)
+    :
+    shaderProgram(std::move(specializations))
+{
+}
+
+void trc::AssetSerializerTraits<trc::Material>::serialize(
+    const trc::MaterialData& data,
+    std::ostream& os)
 {
     serial::Material mat;
 
     // Serialize shader programs
-    for (const auto& [key, program] : programs)
-    {
-        auto newSpec = mat.add_specializations();
-        *newSpec->mutable_shader_program() = program.serialize();
-        newSpec->set_animated(key.flags.has(MaterialKey::Flags::Animated::eTrue));
-    }
+    data.shaderProgram.serialize(*mat.mutable_specializations());
 
     // Serialize default runtime values
-    for (const auto& [pcId, data] : runtimeValueDefaults)
+    for (const auto& [pcId, data] : data.runtimeValueDefaults)
     {
         auto val = mat.add_runtime_values();
         val->set_push_constant_id(pcId);
@@ -71,65 +57,58 @@ void trc::AssetData<trc::Material>::serialize(std::ostream& os) const
 
     // Serialize pipeline settings
     auto settings = mat.mutable_settings();
-    settings->set_transparent(transparent);
-    if (polygonMode) settings->set_polygon_mode(serial::PolygonMode(*polygonMode));
-    if (lineWidth) settings->set_line_width(*lineWidth);
-    if (cullMode)
+    settings->set_transparent(data.transparent);
+    if (data.polygonMode) settings->set_polygon_mode(serial::PolygonMode(*data.polygonMode));
+    if (data.lineWidth) settings->set_line_width(*data.lineWidth);
+    if (data.cullMode)
     {
         serial::CullMode cm = serial::CullMode::NONE;
-        if (*cullMode == vk::CullModeFlagBits::eFrontAndBack) cm = serial::CullMode::FRONT_AND_BACK;
-        else if (*cullMode == vk::CullModeFlagBits::eFront) cm = serial::CullMode::FRONT;
-        else if (*cullMode == vk::CullModeFlagBits::eBack) cm = serial::CullMode::BACK;
+        if (*data.cullMode == vk::CullModeFlagBits::eFrontAndBack) cm = serial::CullMode::FRONT_AND_BACK;
+        else if (*data.cullMode == vk::CullModeFlagBits::eFront) cm = serial::CullMode::FRONT;
+        else if (*data.cullMode == vk::CullModeFlagBits::eBack) cm = serial::CullMode::BACK;
         settings->set_cull_mode(cm);
     }
-    if (frontFace) settings->set_front_face_clockwise(*frontFace == vk::FrontFace::eClockwise);
+    if (data.frontFace) settings->set_front_face_clockwise(*data.frontFace == vk::FrontFace::eClockwise);
 
-    if (depthWrite) settings->set_depth_write(*depthWrite);
-    if (depthTest) settings->set_depth_test(*depthTest);
-    if (depthBiasConstantFactor) settings->set_depth_bias_constant_factor(*depthBiasConstantFactor);
-    if (depthBiasSlopeFactor) settings->set_depth_bias_slope_factor(*depthBiasSlopeFactor);
+    if (data.depthWrite) settings->set_depth_write(*data.depthWrite);
+    if (data.depthTest) settings->set_depth_test(*data.depthTest);
+    if (data.depthBiasConstantFactor) settings->set_depth_bias_constant_factor(*data.depthBiasConstantFactor);
+    if (data.depthBiasSlopeFactor) settings->set_depth_bias_slope_factor(*data.depthBiasSlopeFactor);
 
     mat.SerializeToOstream(&os);
 }
 
-void trc::AssetData<trc::Material>::deserialize(std::istream& is)
+auto trc::AssetSerializerTraits<trc::Material>::deserialize(std::istream& is)
+    -> AssetParseResult<trc::Material>
 {
     serial::Material mat;
     mat.ParseFromIstream(&is);
 
+    // Create result data
+    MaterialData::RuntimeConstantDeserializer runtimeConstants;
+    MaterialData res{ MaterialSpecializationCache{ mat.specializations(), runtimeConstants } };
+
     // Parse settings
     const auto& settings = mat.settings();
-    transparent = settings.transparent();
-    if (settings.has_polygon_mode()) polygonMode = vk::PolygonMode(settings.polygon_mode());
-    if (settings.has_line_width()) lineWidth = settings.line_width();
-    if (settings.has_cull_mode()) cullMode = vk::CullModeFlags(settings.cull_mode());
+    res.transparent = settings.transparent();
+    if (settings.has_polygon_mode()) res.polygonMode = vk::PolygonMode(settings.polygon_mode());
+    if (settings.has_line_width()) res.lineWidth = settings.line_width();
+    if (settings.has_cull_mode()) res.cullMode = vk::CullModeFlags(settings.cull_mode());
     if (settings.has_front_face_clockwise())
     {
-        frontFace = settings.front_face_clockwise() ? vk::FrontFace::eClockwise
-                                                    : vk::FrontFace::eCounterClockwise;
+        res.frontFace = settings.front_face_clockwise() ? vk::FrontFace::eClockwise
+                                                        : vk::FrontFace::eCounterClockwise;
     }
-    if (settings.has_depth_write()) depthWrite = settings.depth_write();
-    if (settings.has_depth_test()) depthTest = settings.depth_test();
-    if (settings.has_depth_bias_constant_factor()) depthBiasConstantFactor = settings.depth_bias_constant_factor();
-    if (settings.has_depth_bias_slope_factor()) depthBiasSlopeFactor = settings.depth_bias_slope_factor();
-
-    // Parse specializations
-    programs.clear();
-    for (const auto& spec : mat.specializations())
-    {
-        shader::ShaderProgramData program;
-        program.deserialize(spec.shader_program(), *this);
-        programs.try_emplace(
-            MaterialSpecializationInfo{ .animated=spec.animated() },
-            std::move(program)
-        );
-    }
+    if (settings.has_depth_write()) res.depthWrite = settings.depth_write();
+    if (settings.has_depth_test()) res.depthTest = settings.depth_test();
+    if (settings.has_depth_bias_constant_factor()) res.depthBiasConstantFactor = settings.depth_bias_constant_factor();
+    if (settings.has_depth_bias_slope_factor()) res.depthBiasSlopeFactor = settings.depth_bias_slope_factor();
 
     // Parse default runtime values
     for (const auto& val : mat.runtime_values())
     {
         const auto& data = val.data();
-        runtimeValueDefaults.emplace_back(
+        res.runtimeValueDefaults.emplace_back(
             val.push_constant_id(),
             std::vector<std::byte>{
                 reinterpret_cast<const std::byte*>(data.c_str()),
@@ -137,31 +116,36 @@ void trc::AssetData<trc::Material>::deserialize(std::istream& is)
             }
         );
     }
+
+    // Store runtime constants to resolve them later on
+    res.requiredTextures = runtimeConstants.loadedTextures;
+
+    return res;
 }
 
-auto trc::AssetData<trc::Material>::deserialize(const std::string& data)
+void trc::AssetData<trc::Material>::resolveReferences(AssetManager& assetManager)
+{
+    for (auto& ref : requiredTextures) {
+        ref.resolve(assetManager);
+    }
+}
+
+auto trc::AssetData<trc::Material>::RuntimeConstantDeserializer::deserialize(const std::string& data)
     -> std::optional<s_ptr<shader::ShaderRuntimeConstant>>
 {
     // For now, we only have texture references as runtime constants.
     if (auto val = RuntimeTextureIndex::deserialize(data))
     {
-        textures.emplace_back(val->getTextureReference());
+        loadedTextures.emplace_back(val->getTextureReference());
         return val;
     }
     return std::nullopt;
 }
 
-void trc::AssetData<trc::Material>::resolveReferences(AssetManager& assetManager)
-{
-    for (auto& ref : textures) {
-        ref.resolve(assetManager);
-    }
-}
-
 
 
 auto trc::makeMaterialProgram(
-    const MaterialData& data,
+    MaterialData& data,
     const MaterialSpecializationInfo& specialization)
     -> u_ptr<MaterialProgram>
 {
@@ -193,7 +177,7 @@ auto trc::makeMaterialProgram(
 
     // Create the runtime program
     return std::make_unique<MaterialProgram>(
-        data.programs.at(key),
+        data.shaderProgram.getSpecialization(key),
         pipelineData,
         renderPass
     );

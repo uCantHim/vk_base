@@ -9,6 +9,7 @@
 #include "trc/assets/AssetPath.h"
 #include "trc/assets/AssetSource.h"
 #include "trc/assets/AssetType.h"
+#include "trc/assets/Serializer.h"
 #include "trc/base/Logging.h"
 #include "trc/util/DataStorage.h"
 #include "trc/util/Pathlet.h"
@@ -35,7 +36,7 @@ namespace trc
         auto getMetadata(const AssetPath& path) -> std::optional<AssetMetadata>;
 
         template<AssetBaseType T>
-        auto load(const AssetPath& path) -> std::optional<AssetData<T>>;
+        auto load(const AssetPath& path) -> AssetParseResult<T>;
 
         /**
          * @brief Create an asset source that can load an asset at a later
@@ -58,6 +59,13 @@ namespace trc
         template<AssetBaseType T>
         bool store(const AssetPath& path, const AssetData<T>& data);
 
+        /**
+         * @brief Delete an item from storage.
+         *
+         * Note that this may be a permanent action, depending on the underlying
+         * data storage implementation. For example, a filesystem storage may
+         * delete the respective data file.
+         */
         bool remove(const AssetPath& path);
 
         struct AssetIterator
@@ -105,13 +113,13 @@ namespace trc
     class AssetStorageSource : public AssetSource<T>
     {
     public:
-        AssetStorageSource(AssetPath path, AssetStorage& storage)
+        AssetStorageSource(AssetPath path, const s_ptr<DataStorage>& storage)
             : path(std::move(path)), storage(storage)
         {}
 
         auto load() -> AssetData<T> override
         {
-            auto data = storage.load<T>(path);
+            auto data = AssetStorage{storage}.load<T>(path);
             if (!data.has_value())
             {
                 log::error << "Unable to load asset at " << path.string()
@@ -125,7 +133,7 @@ namespace trc
 
         auto getMetadata() -> AssetMetadata override
         {
-            auto meta = storage.getMetadata(path);
+            auto meta = AssetStorage{storage}.getMetadata(path);
             if (!meta.has_value())
             {
                 log::error << "Unable to load asset metadata from " << path.string()
@@ -137,28 +145,33 @@ namespace trc
 
     private:
         const AssetPath path;
-        AssetStorage& storage;
+        s_ptr<DataStorage> storage;
     };
 
     template<AssetBaseType T>
-    auto AssetStorage::load(const AssetPath& path) -> std::optional<AssetData<T>>
+    auto AssetStorage::load(const AssetPath& path) -> AssetParseResult<T>
     {
         // Ensure that the correct type of asset is stored at `path`
         const auto meta = getMetadata(path);
-        if (!meta || meta->type != AssetType::make<T>()) {
-            return std::nullopt;
+        if (!meta || meta->type != AssetType::make<T>())
+        {
+            return std::unexpected(AssetParseError{
+                AssetParseError::Code::eSemanticError,
+                "Asset at " + path.string() + " does not exist or data at that"
+                " path is not of the requested type " + std::string{T::name()} + "."
+            });
         }
 
         // Load and parse data
         auto dataStream = storage->read(makeDataPath(path));
-        if (dataStream != nullptr)
-        {
-            AssetData<T> data;
-            data.deserialize(*dataStream);
-            return data;
+        if (dataStream != nullptr) {
+            return AssetSerializerTraits<T>::deserialize(*dataStream);
         }
 
-        return std::nullopt;
+        return std::unexpected(AssetParseError{
+            AssetParseError::Code::eSystemError,
+            "Unable to read data at path " + makeDataPath(path).string() + "."
+        });
     }
 
     template<AssetBaseType T>
@@ -170,7 +183,7 @@ namespace trc
             return std::nullopt;
         }
 
-        return std::make_unique<AssetStorageSource<T>>(path, *this);
+        return std::make_unique<AssetStorageSource<T>>(path, this->storage);
     }
 
     template<AssetBaseType T>
@@ -198,7 +211,7 @@ namespace trc
             .type=AssetType::make<T>(),
             .path=path
         }, *metaStream);
-        data.serialize(*dataStream);
+        AssetSerializerTraits<T>::serialize(data, *dataStream);
 
         return true;
     }

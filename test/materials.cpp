@@ -82,7 +82,7 @@ auto createMaterial(AssetManager& assetManager) -> MaterialData
 
     // Create a pipeline
     const bool transparent{ true };
-    MaterialData materialData{ fragmentModule.build(std::move(builder), transparent), transparent };
+    MaterialData materialData{ {fragmentModule.build(std::move(builder), transparent), transparent} };
 
     return materialData;
 }
@@ -109,11 +109,9 @@ int main()
     // Demonstrate serialization and deserialization
     {
         std::stringstream stream;
-        materialData.serialize(stream);
+        AssetSerializerTraits<Material>::serialize(materialData, stream);
         stream.flush();
-
-        materialData = {};
-        materialData.deserialize(stream);
+        materialData = AssetSerializerTraits<Material>::deserialize(stream).value();
     }
 
     // Load resources

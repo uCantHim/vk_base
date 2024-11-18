@@ -113,10 +113,10 @@ auto makeMaterial(const SimpleMaterialData& data) -> MaterialData
                       builder.makeCast<float>(emissiveParam));
 
     const bool transparent = data.opacity < 1.0f;
-    auto res = MaterialData{
+    auto res = MaterialData{ MaterialBaseInfo{
         frag.build(std::move(builder), transparent, capabilities),
         transparent
-    };
+    }};
 
     struct PcData
     {

@@ -211,7 +211,7 @@ void convertGeometry(
 
     for (const auto& mesh : data.meshes)
     {
-        auto tryWrite = [&](auto&& data, const fs::path& fileName) {
+        auto tryWrite = [&]<typename T>(const trc::AssetData<T>& data, const fs::path& fileName) {
             const auto filePath = outPath / fileName;
             std::ofstream file(filePath);
             if (!file.is_open())
@@ -220,7 +220,7 @@ void convertGeometry(
                 return false;
             }
 
-            data.serialize(file);
+            trc::AssetSerializerTraits<T>::serialize(data, file);
             return true;
         };
 
