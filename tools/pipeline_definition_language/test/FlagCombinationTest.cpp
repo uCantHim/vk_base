@@ -59,3 +59,27 @@ TEST(FlagCombinationTest, ConstexprTests)
     constexpr auto max = Bar::eSecond | Baz::c;
     static_assert(max.toIndex() == max.size() - 1);
 }
+
+TEST(FlagCombinationTest, FromIndex)
+{
+    using FlagsA = FlagCombination<Bar, Baz>;
+    using FlagsB = FlagCombination<Bar, Baz, Foo>;
+
+    constexpr FlagsA a;
+    static_assert(a == FlagsA::fromIndex(a.toIndex()));
+    for (uint32_t i = 1; i < FlagsA::size(); ++i) {
+        ASSERT_NE(FlagsA::fromIndex(i), a);
+    }
+
+    constexpr FlagsB b = Foo::eTwo | Bar::eNone | Baz::b;
+    static_assert(b == FlagsB::fromIndex(b.toIndex()));
+    for (uint32_t i = 0; i < FlagsB::size(); ++i)
+    {
+        if (i != b.toIndex()) {
+            ASSERT_NE(FlagsB::fromIndex(i), b);
+        }
+        else {
+            ASSERT_EQ(FlagsB::fromIndex(i), b);
+        }
+    }
+}

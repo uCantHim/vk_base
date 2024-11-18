@@ -3,9 +3,11 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <cassert>
 
 #include <array>
 #include <concepts>
+#include <ranges>
 #include <tuple>
 
 //$ FLAG_COMBINATION_NAMESPACE_BEGIN
@@ -183,6 +185,29 @@ public:
             totalMax *= flag.maxValue;
         }
         return index;
+    }
+
+    static constexpr auto fromIndex(uint32_t index) -> FlagCombination
+    {
+        assert(index < size());
+
+        FlagCombination res;
+        for (uint32_t totalMax{ 1 }; FlagValue& flag : res.values)
+        {
+            totalMax *= flag.maxValue;
+            flag.bits = index % totalMax;
+            index = (index - flag.bits) / totalMax;
+        }
+
+        return res;
+    };
+
+    constexpr bool operator==(const FlagCombination& other) const {
+        return toIndex() == other.toIndex();
+    }
+
+    constexpr bool operator!=(const FlagCombination& other) const {
+        return !(*this == other);
     }
 
 private:
