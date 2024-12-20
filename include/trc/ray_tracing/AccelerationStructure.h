@@ -37,7 +37,7 @@ namespace trc::rt
 
         protected:
             using UniqueAccelerationStructure = vk::UniqueHandle<
-                vk::AccelerationStructureKHR, vk::DispatchLoaderDynamic
+                vk::AccelerationStructureKHR, VulkanDispatchLoaderDynamic
             >;
 
             /**

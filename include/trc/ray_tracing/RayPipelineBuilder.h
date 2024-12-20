@@ -95,7 +95,7 @@ namespace trc::rt
             -> vk::RayTracingShaderGroupCreateInfoKHR&;
 
         const Device& device;
-        const vk::DispatchLoaderDynamic& dl;
+        const VulkanDispatchLoaderDynamic& dl;
 
         // Need to be kept alive for the stage create infos
         std::vector<vk::UniqueShaderModule> shaderModules;

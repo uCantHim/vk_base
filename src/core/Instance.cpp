@@ -92,12 +92,12 @@ auto trc::Instance::getDevice() const -> const Device&
     return *device;
 }
 
-auto trc::Instance::getDL() -> vk::DispatchLoaderDynamic&
+auto trc::Instance::getDL() -> VulkanDispatchLoaderDynamic&
 {
     return dynamicLoader;
 }
 
-auto trc::Instance::getDL() const -> const vk::DispatchLoaderDynamic&
+auto trc::Instance::getDL() const -> const VulkanDispatchLoaderDynamic&
 {
     return dynamicLoader;
 }

@@ -19,7 +19,7 @@ trc::Pipeline::Pipeline(
         throw Exception("[In Pipeline::Pipeline]: Specified layout is not a valid layout handle");
     }
 
-    using UniquePipelineDl = vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderDynamic>;
+    using UniquePipelineDl = vk::UniqueHandle<vk::Pipeline, VulkanDispatchLoaderDynamic>;
 
     if (std::holds_alternative<vk::UniquePipeline>(pipelineStorage)) {
         this->pipeline = *std::get<vk::UniquePipeline>(pipelineStorage);

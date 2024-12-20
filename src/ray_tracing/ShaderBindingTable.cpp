@@ -8,7 +8,7 @@
 
 trc::rt::ShaderBindingTable::ShaderBindingTable(
     const Device& device,
-    const vk::DispatchLoaderDynamic& dl,
+    const VulkanDispatchLoaderDynamic& dl,
     vk::Pipeline pipeline,
     std::vector<ui32> entrySizes,
     const DeviceMemoryAllocator& alloc)

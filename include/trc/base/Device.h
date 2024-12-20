@@ -70,7 +70,7 @@ public:
      *
      * @return The device's dynamic dispatch loader.
      */
-    auto getDL() const noexcept -> const vk::DispatchLoaderDynamic&;
+    auto getDL() const noexcept -> const VulkanDispatchLoaderDynamic&;
 
     auto getQueueManager() noexcept -> QueueManager&;
     auto getQueueManager() const noexcept -> const QueueManager&;
@@ -117,7 +117,7 @@ private:
 
     const PhysicalDevice physicalDevice;
     vk::UniqueDevice device;
-    const vk::DispatchLoaderDynamic dispatchLoaderDynamic;
+    const VulkanDispatchLoaderDynamic dispatchLoaderDynamic;
 
     QueueManager queueManager;
 

@@ -70,8 +70,8 @@ private:
 
 #ifdef TRC_DEBUG
     const vk::Instance instance; // Required for messenger destruction
-    vk::DispatchLoaderDynamic dispatcher;
-    vk::UniqueHandle<vk::DebugUtilsMessengerEXT, vk::DispatchLoaderDynamic> debugMessenger;
+    VulkanDispatchLoaderDynamic dispatcher;
+    vk::UniqueHandle<vk::DebugUtilsMessengerEXT, VulkanDispatchLoaderDynamic> debugMessenger;
 
     std::unique_ptr<VulkanDebugLogger> debugLogger;
 #endif

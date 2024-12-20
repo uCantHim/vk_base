@@ -19,8 +19,8 @@ namespace trc
     public:
         using ID = TypesafeID<Pipeline, ui32>;
         using UniquePipelineHandleType = std::variant<
-            vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>,  // vk::UniquePipeline
-            vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderDynamic>
+            vk::UniqueHandle<vk::Pipeline, VulkanDispatchLoaderStatic>,  // vk::UniquePipeline
+            vk::UniqueHandle<vk::Pipeline, VulkanDispatchLoaderDynamic>
         >;
 
         Pipeline() = delete;

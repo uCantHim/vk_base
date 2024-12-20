@@ -71,8 +71,8 @@ namespace trc
         auto getPhysicalDevice() const -> const PhysicalDevice&;
         auto getDevice() -> Device&;
         auto getDevice() const -> const Device&;
-        auto getDL() -> vk::DispatchLoaderDynamic&;
-        auto getDL() const -> const vk::DispatchLoaderDynamic&;
+        auto getDL() -> VulkanDispatchLoaderDynamic&;
+        auto getDL() const -> const VulkanDispatchLoaderDynamic&;
 
         auto makeWindow() -> u_ptr<Window>;
         auto makeWindow(const WindowCreateInfo& info) -> u_ptr<Window>;
@@ -96,6 +96,6 @@ namespace trc
         u_ptr<PhysicalDevice> physicalDevice;
         u_ptr<Device> device;
 
-        vk::DispatchLoaderDynamic dynamicLoader;
+        VulkanDispatchLoaderDynamic dynamicLoader;
     };
 } // namespace trc

@@ -65,7 +65,7 @@ auto trc::Device::getPhysicalDevice() const noexcept -> const PhysicalDevice&
     return physicalDevice;
 }
 
-auto trc::Device::getDL() const noexcept -> const vk::DispatchLoaderDynamic&
+auto trc::Device::getDL() const noexcept -> const VulkanDispatchLoaderDynamic&
 {
     return dispatchLoaderDynamic;
 }
