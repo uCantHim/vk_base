@@ -38,9 +38,13 @@ namespace trc
         struct Flags
         {
             enum class Animated{ eFalse, eTrue, eMaxEnum };
+            // enum class ...
         };
 
-        using MaterialSpecializationFlags = FlagCombination<Flags::Animated>;
+        using MaterialSpecializationFlags = FlagCombination<
+            Flags::Animated
+            //, ...
+        >;
 
         struct Hash
         {
@@ -94,10 +98,27 @@ namespace trc
         -> shader::ShaderProgramData;
 
     /**
-     * @brief Manages specializations for a material.
+     * Create a full shader program for Torch's render algorithm from a material
+     * description and additional specialization information.
+     */
+    auto makeDeferredMaterialSpecialization(const MaterialBaseInfo& baseInfo,
+                                            const MaterialSpecializationInfo& info)
+        -> shader::ShaderProgramData;
+
+    /**
+     * @brief Manages material specializations.
      *
-     * Lazily creates material specializations (shader programs and
-     * runtimes) when they're requested.
+     * A "material specialization" is a compiled, executable shader program with
+     * a corresponding runtime. Specializations are instantiations of "material
+     * base descriptions" for specific target parameters (e.g. a geometry type
+     * or a render algorithm).
+     *
+     * A base material description consists of a fragment shader and some
+     * additional configurations parameters. See the `MaterialBaseInfo` struct.
+     *
+     * When creating a specialization cache from a base material description,
+     * it creates specializations lazily. Serializing the specialization cache
+     * requires all specializations to be pre-computed.
      */
     struct MaterialSpecializationCache
     {
@@ -125,7 +146,14 @@ namespace trc
         auto iterSpecializations()
             -> std::generator<std::pair<MaterialKey, const shader::ShaderProgramData&>>;
 
+        /**
+         * Always pre-computes and outputs all specializations.
+         */
         auto serialize() const -> serial::MaterialProgramSpecializations;
+
+        /**
+         * Always pre-computes and outputs all specializations.
+         */
         void serialize(serial::MaterialProgramSpecializations& out) const;
 
     private:
@@ -135,7 +163,9 @@ namespace trc
         template<std::default_initializable T>
         using PerSpecialization = std::array<T, kNumSpecializations>;
 
-        /** @return `nullptr` if the specialization cannot be created. */
+        static auto createSpecialization(const MaterialBaseInfo& info, const MaterialKey& key)
+            -> shader::ShaderProgramData;
+
         auto getOrCreateSpecialization(const MaterialKey& key)
             -> shader::ShaderProgramData&;
 

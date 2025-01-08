@@ -22,6 +22,13 @@ auto makeDeferredMaterialSpecialization(const shader::ShaderModule& fragmentModu
     );
 }
 
+auto makeDeferredMaterialSpecialization(const MaterialBaseInfo& baseInfo,
+                                        const MaterialSpecializationInfo& info)
+    -> shader::ShaderProgramData
+{
+    return makeDeferredMaterialSpecialization(baseInfo.fragmentModule, info);
+}
+
 
 
 MaterialSpecializationCache::MaterialSpecializationCache(const MaterialBaseInfo& base)
@@ -74,10 +81,21 @@ void MaterialSpecializationCache::serialize(serial::MaterialProgramSpecializatio
     out.clear_specializations();
     for (const auto& [i, prog] : std::views::enumerate(shaderPrograms))
     {
+        assert(prog || base);  // The constructor interface is designed in a way
+                               // that this should always be true.
+
         const auto key = MaterialKey::fromUniqueIndex(i);
         auto newSpec = out.add_specializations();
         newSpec->set_animated(key.flags & MaterialKey::Flags::Animated::eTrue);
-        *newSpec->mutable_shader_program() = prog->serialize();
+
+        if (prog) {
+            *newSpec->mutable_shader_program() = prog->serialize();
+        }
+        else {
+            assert(base);
+            auto spec = createSpecialization(*base, key);
+            *newSpec->mutable_shader_program() = spec.serialize();
+        }
     }
 }
 
@@ -87,14 +105,20 @@ auto MaterialSpecializationCache::getOrCreateSpecialization(const MaterialKey& k
     auto& program = shaderPrograms[key.toUniqueIndex()];
     if (!program)
     {
-        assert(base != std::nullopt);
-        program = makeDeferredMaterialSpecialization(
-            base->fragmentModule,
-            { .animated=key.flags & MaterialKey::Flags::Animated::eTrue }
-        );
+        assert(base);  // The constructor interface is designed in a way that
+                       // this should always be true.
+        program = createSpecialization(*base, key);
     }
 
     return program.value();
+}
+
+auto MaterialSpecializationCache::createSpecialization(
+    const MaterialBaseInfo& base,
+    const MaterialKey& key)
+    -> shader::ShaderProgramData
+{
+    return makeDeferredMaterialSpecialization(base.fragmentModule, key.toSpecializationInfo());
 }
 
 } // namespace trc
