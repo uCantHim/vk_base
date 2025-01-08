@@ -176,13 +176,22 @@ endif ()
 
 # Optional FBX stuff
 if (${TORCH_USE_FBX_SDK})
-    target_link_libraries(torch PUBLIC fbxsdk xml2)
-    target_compile_definitions(torch PUBLIC TRC_USE_FBX_SDK)
+    find_package(fbxsdk QUIET)
+    if (${fbxsdk_FOUND})
+        target_link_libraries(torch PUBLIC fbxsdk xml2)
+        target_compile_definitions(torch PUBLIC TRC_USE_FBX_SDK)
+    else ()
+        message(WARNING "TORCH_USE_FBX_SDK is set to ON, but no FBX SDK was"
+                        " found on the machine. Building Torch without it.")
+    endif ()
 endif ()
 
 # Optional assimp stuff
 find_package(assimp QUIET)
 if (${assimp_FOUND})
+    message(INFO "Found Assimp; building Torch with support for it.")
     target_link_libraries(torch PUBLIC ${ASSIMP_LIBRARIES})
     target_compile_definitions(torch PUBLIC TRC_USE_ASSIMP)
+else ()
+    message(INFO "Assimp was not found; building Torch without it.")
 endif ()
