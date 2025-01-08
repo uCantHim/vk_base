@@ -1,7 +1,5 @@
 #pragma once
 
-#include <memory>
-#include <vector>
 #include <filesystem>
 
 #include <trc_util/Exception.h>

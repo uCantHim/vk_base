@@ -5,7 +5,7 @@
 
 #include <trc_util/data/SafeVector.h>
 
-#include "trc/assets/AssetBase.h"
+#include "trc/Types.h"
 
 namespace trc
 {

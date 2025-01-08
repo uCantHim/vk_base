@@ -1,6 +1,7 @@
 #include <iostream>
 #include <filesystem>
 #include <format>
+#include <fstream>
 
 #include <argparse/argparse.hpp>
 #include <trc/assets/import/AssetImport.h>

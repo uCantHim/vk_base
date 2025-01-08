@@ -28,18 +28,18 @@ auto trc::makeMeshletIndices(const std::vector<ui32>& _indexBuffer, const Meshle
         // Declare range of current meshlet's unique vertices
         auto begin = geo.uniqueVertices.begin() + vertexBegin;
         auto end = geo.uniqueVertices.end();
-        auto findVertexIndex = [&](ui32 index) -> int
+        auto findVertexIndex = [&](ui32 index) -> i32
         {
             auto it = std::find(begin, end, index);
-            return it == end ? -1 : it - begin;
+            return it == end ? -1 : static_cast<int>(it - begin);
         };
 
-        int verts[] = {
+        i32 verts[] = {
             findVertexIndex(indexBuffer[i + 0]),
             findVertexIndex(indexBuffer[i + 1]),
             findVertexIndex(indexBuffer[i + 2]),
         };
-        const ui32 newUniques = [&]{ ui32 n = 0; for (int i : verts) n += i < 0; return n; }();
+        const ui32 newUniques = [&]{ ui32 n = 0; for (i32 i : verts) n += i < 0; return n; }();
 
         const ui32 paddedNumPrimVerts = util::pad(numPrimVerts, PADDING);
         // Create meshlet if size limitations have been reached
@@ -73,7 +73,7 @@ auto trc::makeMeshletIndices(const std::vector<ui32>& _indexBuffer, const Meshle
             {
                 geo.uniqueVertices.emplace_back(indexBuffer[i + j]);
                 ++numVertices;
-                verts[j] = int((int(geo.uniqueVertices.size()) - 1) - vertexBegin);
+                verts[j] = (i32(geo.uniqueVertices.size()) - 1) - i32(vertexBegin);
             }
             assert(verts[j] >= 0 && verts[j] <= UINT8_MAX);
             assert(static_cast<ui32>(verts[j]) < numVertices);

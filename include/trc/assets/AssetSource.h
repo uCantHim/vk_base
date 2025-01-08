@@ -3,7 +3,6 @@
 #include <cassert>
 
 #include <atomic>
-#include <fstream>
 #include <iomanip>
 #include <optional>
 #include <string>
@@ -13,8 +12,6 @@
 #include "trc/assets/AssetBase.h"
 #include "trc/assets/AssetPath.h"
 #include "trc/assets/AssetType.h"
-#include "trc/base/Logging.h"
-#include "trc/util/TorchDirectories.h"
 
 namespace trc
 {

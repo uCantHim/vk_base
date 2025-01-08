@@ -1,5 +1,7 @@
 #include "trc/assets/import/AssetImport.h"
 
+#include <fstream>
+
 #include "trc/base/ImageUtils.h"
 #include "trc/base/Logging.h"
 
@@ -28,19 +30,23 @@ auto trc::loadAssets(const fs::path& filePath) -> ThirdPartyFileImportData
 #ifdef TRC_USE_FBX_SDK
             return FBXImporter::load(filePath);
 #else
-            throw DataImportError("[In loadAssets]: Unable to import data from .fbx files"
-                                  " as Torch was built without the FBX SDK");
+            log::warn << log::here() << ": "
+                      << "Loading data from an .fbx file, but Torch was not built with the"
+                         " FBX SDK enabled. The fallback asset importer may not be able"
+                         " to load all asset data from the file.";
 #endif
         }
 
 #ifdef TRC_USE_ASSIMP
         return AssetImporter::load(filePath);
-#else
-        throw DataImportError("[In loadAssets]: Unable to import data from " + filePath.string()
-                              + " as Torch was built without Assimp");
 #endif
 
-        return {};
+        throw DataImportError(
+            "[In loadAssets]: Unable to import data from " + filePath.string() + ";"
+            " Torch was not built with any asset importers enabled."
+            " Install Assimp for Torch to find it during build or set the CMake option"
+            " `TORCH_USE_FBX_SDK=ON` to build Torch with an installed FBX SDK to enable the"
+            " FBX importer.");
     }();
 
     for (auto& mesh : result.meshes)
