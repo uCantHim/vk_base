@@ -35,7 +35,8 @@ void trc::rt::internal::AccelerationStructureBase::create(
     accelerationStructureBuffer = DeviceLocalBuffer{
         instance.getDevice(),
         buildSizes.accelerationStructureSize, nullptr,
-        vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR,
+        vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR
+        | vk::BufferUsageFlagBits::eShaderDeviceAddress,
         alloc
     };
     accelerationStructure = instance.getDevice()->createAccelerationStructureKHRUnique(

@@ -125,7 +125,11 @@ void RayTracingPlugin::init(ViewportContext& ctx)
 
 RayTracingPlugin::TlasUpdateConfig::TlasUpdateConfig(RayTracingPlugin& parent)
     :
-    tlas{ parent.instance, parent.maxTlasInstances },
+    tlas{
+        parent.instance,
+        parent.maxTlasInstances,
+        DefaultDeviceMemoryAllocator{ vk::MemoryAllocateFlagBits::eDeviceAddress },
+    },
     tlasBuilder(parent.instance.getDevice(), tlas),
     tlasDescriptor(parent.raygenDescriptorPool.allocateTlasDescriptorSet(tlas))
 {
